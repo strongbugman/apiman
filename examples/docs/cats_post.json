@@ -1,0 +1,42 @@
+{
+  "summary": "Create one cat",
+  "tags": [
+    "cats"
+  ],
+  "parameters": [
+  {
+    "name": "Cat",
+    "in": "body",
+    "schema": {
+      "type": "object",
+      "required": [
+        "name",
+        "age",
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "global unique"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 31,
+          "description": "naming cat"
+        },
+        "age": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+  ],
+  "responses": {
+    "201": {
+      "description": "OK",
+      "schema": {
+        "$ref": "#/definitions/Cat"
+      }
+    }
+  }
+}
