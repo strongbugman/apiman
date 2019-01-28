@@ -1,4 +1,4 @@
-"""OpenAPI2(Swagger) example
+"""OpenAPI3 example
 """
 from functools import partial
 
@@ -7,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.endpoints import HTTPEndpoint
 from uvicorn import run
-from openapi_spec_validator import validate_v2_spec
+from openapi_spec_validator import validate_v3_spec
 from starlette.testclient import TestClient
 
 from starchart.generators import SchemaGenerator
@@ -17,19 +17,16 @@ from starchart.endpoints import UI, Schema
 app = Starlette(debug=True)
 
 app.schema_generator = SchemaGenerator(
-    title="Cat store",
-    description="Cat store api document",
+    title="Dog store",
+    description="Dog store api document",
     version="0.1",
-    openapi_version="2.0",
+    openapi_version="3.0.0",
 )
 # define data
-CATS = {
-    1: {"id": 1, "name": "DangDang", "age": 2},
-    2: {"id": 2, "name": "DingDing", "age": 1},
-}
-# add schema definition
+DOGS = {1: {"id": 1, "name": "Ping", "age": 2}, 2: {"id": 2, "name": "Pong", "age": 1}}
+# add schema
 app.schema_generator.add_schema(
-    "Cat",
+    "Dog",
     {
         "properties": {
             "id": {"description": "global unique", "type": "integer"},
@@ -42,63 +39,69 @@ app.schema_generator.add_schema(
 
 
 # define routes and schema(in doc string)
-@app.route("/cat/")
-class Cat(HTTPEndpoint):
+@app.route("/dog/")
+class Dog(HTTPEndpoint):
     def get(self, req: Request):
         """
-        summary: Get single cat
+        summary: Get single dog
         tags:
-        - cat
+        - dog
         parameters:
         - name: id
-          type: integer
           in: query
           required: True
+          schema:
+            type: integer
         responses:
           "200":
             description: OK
-            schema:
-              $ref: '#/definitions/Cat'
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Dog'
           "404":
             description: Not found
        """
-        return JSONResponse(CATS[1])
+        return JSONResponse(DOGS[1])
 
     def delete(self, req: Request):
         """
-        summary: Delete single cat
+        summary: Delete single dog
         tags:
-        - cat
+        - dog
         parameters:
         - name: id
-          type: integer
           in: query
           required: True
+          schema:
+            type: integer
         responses:
           "204":
             description: OK
-            schema:
-              $ref: '#/definitions/Cat'
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Dog'
           "404":
             description: Not found
         """
-        cat = CATS.pop(1)
-        return JSONResponse(cat)
+        dog = DOGS.pop(1)
+        return JSONResponse(dog)
 
 
 # define doc by yaml or json file
-@app.route("/cats/", methods=["GET"])
-@app.schema_generator.schema_from("./examples/docs/cats_get.yml")
-def list_cats(req: Request):
-    return JSONResponse(list(CATS.values()))
+@app.route("/dogs/", methods=["GET"])
+@app.schema_generator.schema_from("./examples/docs/dogs_get.yml")
+def list_dogs(req: Request):
+    return JSONResponse(list(DOGS.values()))
 
 
-@app.route("/cats/", methods=["POST"])
-@app.schema_generator.schema_from("./examples/docs/cats_post.json")
-async def list_cats(req: Request):
-    cat = await req.json()
-    CATS[cat["id"]] = cat
-    return JSONResponse(cat)
+@app.route("/dogs/", methods=["POST"])
+@app.schema_generator.schema_from("./examples/docs/dogs_post.json")
+async def list_dogs(req: Request):
+    dog = await req.json()
+    DOGS[dog["id"]] = dog
+    return JSONResponse(dog)
 
 
 # add document's endpoints
@@ -114,7 +117,7 @@ Schema.SCHEMA_LOADER = partial(app.schema_generator.get_schema, app.routes)
 
 def test_app():
     client = TestClient(app)
-    validate_v2_spec(app.schema)
+    validate_v3_spec(app.schema)
     assert client.get(schema_path).json() == app.schema
     assert client.get("/docs/").status_code == 200
 

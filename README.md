@@ -8,7 +8,7 @@
 ## Features
 
 * Inherit `starlette.schemas.BaseSchemaGenerator` 
-* Define API schema by your way
+* Support OpenAPI 2 and 3, define API schema by your way
 * Provide configurable [SwaggerUI](http://swagger.io/swagger-ui/)
 * ...
 
@@ -49,8 +49,8 @@ CATS = {
     1: {"id": 1, "name": "DangDang", "age": 2},
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
-# add schema definition
-app.schema_generator.add_definition(
+# add schema
+app.schema_generator.add_schema(
     "Cat",
     {
         "properties": {
@@ -160,7 +160,7 @@ standard schema api
 
 ## TODO
 
-* OpenAPI3 example app
-* Redoc UI support
-* Provide a Starlette extension, make it easier to integrate your projects
-* Requset/Response validation by defined schema
+- [x] OpenAPI3 example app
+- [ ] Redoc UI support
+- [ ] Provide a Starlette extension, make it easier to integrate your projects
+- [ ] Requset/Response validation by defined schema

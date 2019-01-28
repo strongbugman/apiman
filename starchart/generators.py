@@ -19,13 +19,14 @@ class SchemaGenerator(BaseSchemaGenerator):
     ):
         self.schema: typing.Dict = {
             "info": {"title": title, "description": description, "version": version},
-            "definitions": {},
             "paths": defaultdict(dict),
         }
         if openapi_version == "2.0":
             self.schema["swagger"] = openapi_version
+            self.schema["definitions"] = {}
         else:
             self.schema["openapi"] = openapi_version
+            self.schema["components"] = {"schemas": {}}
         self.loaded = False
 
     @staticmethod
@@ -36,8 +37,11 @@ class SchemaGenerator(BaseSchemaGenerator):
             else:
                 return yaml.safe_load(f)
 
-    def add_definition(self, name, definition):
-        self.schema["definitions"][name] = definition
+    def add_schema(self, name, definition):
+        if "swagger" in self.schema:
+            self.schema["definitions"][name] = definition
+        else:
+            self.schema["components"]["schemas"][name] = definition
 
     def add_path(self, path: str, method: str, document: typing.Dict):
         self.schema["paths"][path][method] = document
@@ -54,12 +58,13 @@ class SchemaGenerator(BaseSchemaGenerator):
                 doc = self.parse_docstring(endpoint.func)
 
             if doc:
+                schemas_name = "definitions" if "swagger" in self.schema else "schemas"
                 try:
-                    definitions = doc.pop("definitions")
+                    schemas = doc.pop(schemas_name)
                 except KeyError:
-                    definitions = {}
-                for name, definition in definitions.items():
-                    self.add_definition(name, definition)
+                    schemas = {}
+                for name, schema in schemas.items():
+                    self.add_schema(name, schema)
 
                 self.add_path(endpoint.path, endpoint.http_method, doc)
 
