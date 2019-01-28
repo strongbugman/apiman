@@ -1,9 +1,9 @@
-# Stagger
+# Starchart
 
 ## API document support for Starlette project
 
-![Build](https://travis-ci.com/strongbugman/starchat.svg?branch=master)
-![Code Coverage](https://codecov.io/gh/strongbugman/starchat/branch/master/graph/badge.svg)
+![Build](https://travis-ci.com/strongbugman/starchart.svg?branch=master)
+![Code Coverage](https://codecov.io/gh/strongbugman/starchart/branch/master/graph/badge.svg)
 
 ## Features
 
@@ -15,7 +15,7 @@
 ## Install
 
 ```shell
-pip install -U starchat
+pip install -U starchart
 ```
 
 ## Tutorial
@@ -154,7 +154,7 @@ See **examples/**
 
 ### How the swagger UI works?
 
-We provide two endpoints: a standard web page (see *starchat/static/index.html*) and a 
+We provide two endpoints: a standard web page (see *starchart/static/index.html*) and a 
 standard schema api
 
 
