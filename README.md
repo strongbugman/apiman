@@ -1,21 +1,21 @@
 # Stagger
 
-## Swagger/OpenAPI support for Starlette project
+## API document support for Starlette project
 
-![Build](https://travis-ci.com/strongbugman/stagger.svg?branch=master)
-![Code Coverage](https://codecov.io/gh/strongbugman/stagger/branch/master/graph/badge.svg)
+![Build](https://travis-ci.com/strongbugman/starchat.svg?branch=master)
+![Code Coverage](https://codecov.io/gh/strongbugman/starchat/branch/master/graph/badge.svg)
 
 ## Features
 
 * Inherit `starlette.schemas.BaseSchemaGenerator` 
-* Define OpenAPI document by your way
+* Define API schema by your way
 * Provide configurable [SwaggerUI](http://swagger.io/swagger-ui/)
 * ...
 
 ## Install
 
 ```shell
-pip install -U stagger
+pip install -U starchat
 ```
 
 ## Tutorial
@@ -32,8 +32,8 @@ from starlette.responses import JSONResponse
 from starlette.endpoints import HTTPEndpoint
 from uvicorn import run
 
-from stagger.generators import SchemaGenerator
-from stagger.endpoints import UI, Schema
+from starchart.generators import SchemaGenerator
+from starchart.endpoints import UI, Schema
 
 
 app = Starlette(debug=True)
@@ -110,30 +110,29 @@ class Cat(HTTPEndpoint):
 
 # define doc by yaml or json file
 @app.route("/cats/", methods=["GET"])
-@app.schema_generator.stagger_from("./examples/docs/cats_get.yml")
+@app.schema_generator.schema_from("./examples/docs/cats_get.yml")
 def list_cats(req: Request):
     return JSONResponse(list(CATS.values()))
 
 
 @app.route("/cats/", methods=["POST"])
-@app.schema_generator.stagger_from("./examples/docs/cats_post.json")
+@app.schema_generator.schema_from("./examples/docs/cats_post.json")
 async def list_cats(req: Request):
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
 
 
-# add stagger's endpoints
+# add document's endpoints
 schema_path = "/docs/schema/"
 app.add_route("/docs/", UI, methods=["GET"], name="SwaggerUI", include_in_schema=False)
 app.add_route(
     schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
 )
-# config stagger
+# config endpoints
 UI.CONTEXT["schema_url"] = schema_path
 Schema.SCHEMA_LOADER = partial(app.schema_generator.get_schema, app.routes)
 
-# run app
 run(app)
 ```
 
@@ -150,17 +149,18 @@ See **examples/**
 ### How can I define endpoints schema?
 
 * Function or method's docstring
-* From yaml or json file(by `stagger_from`)
+* From yaml or json file(by `schema_from`)
 * ...
 
 ### How the swagger UI works?
 
-We provide two endpoints: a standard web page (see *stagger/static/index.html*) and a 
+We provide two endpoints: a standard web page (see *starchat/static/index.html*) and a 
 standard schema api
 
 
 ## TODO
 
 * OpenAPI3 example app
+* Redoc UI support
 * Provide a Starlette extension, make it easier to integrate your projects
 * Requset/Response validation by defined schema

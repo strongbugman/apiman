@@ -5,11 +5,11 @@ from starlette.requests import Request
 from starlette.responses import TemplateResponse, JSONResponse
 from jinja2 import Template
 
-import stagger
+import starchart
 
 
 class UI(HTTPEndpoint):
-    TEMPLATE = Template(open(f"{stagger.__path__[0]}/static/index.html").read())
+    TEMPLATE = Template(open(f"{starchart.__path__[0]}/static/index.html").read())
     CONTEXT = {
         "title": "Swagger UI",
         "swagger_ui_css": "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.20.5"

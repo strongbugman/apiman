@@ -8,11 +8,11 @@ import yaml
 
 
 class SchemaGenerator(BaseSchemaGenerator):
-    SWAGGER_PATH_ATTR_NAME = "__stagger_path__"
+    SCHEMA_PATH_ATTR_NAME = "__schema_path__"
 
     def __init__(
         self,
-        title: str = "Stagger",
+        title: str = "Starchart",
         version: str = "0.1",
         description: str = "Api document",
         openapi_version: str = "2.0",
@@ -45,7 +45,7 @@ class SchemaGenerator(BaseSchemaGenerator):
     def load_schema(self, routes: typing.List[BaseRoute]):
         for endpoint in self.get_endpoints(routes):
             doc_path: typing.Optional[str] = getattr(
-                endpoint.func, self.SWAGGER_PATH_ATTR_NAME, None
+                endpoint.func, self.SCHEMA_PATH_ATTR_NAME, None
             )
 
             if doc_path:
@@ -70,9 +70,9 @@ class SchemaGenerator(BaseSchemaGenerator):
             self.load_schema(routes)
         return self.schema
 
-    def stagger_from(self, file_path: str) -> typing.Callable:
+    def schema_from(self, file_path: str) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
-            setattr(func, self.SWAGGER_PATH_ATTR_NAME, file_path)
+            setattr(func, self.SCHEMA_PATH_ATTR_NAME, file_path)
             return func
 
         return decorator

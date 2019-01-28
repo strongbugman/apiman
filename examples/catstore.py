@@ -10,8 +10,8 @@ from uvicorn import run
 from openapi_spec_validator import validate_v2_spec
 from starlette.testclient import TestClient
 
-from stagger.generators import SchemaGenerator
-from stagger.endpoints import UI, Schema
+from starchart.generators import SchemaGenerator
+from starchart.endpoints import UI, Schema
 
 
 app = Starlette(debug=True)
@@ -88,26 +88,26 @@ class Cat(HTTPEndpoint):
 
 # define doc by yaml or json file
 @app.route("/cats/", methods=["GET"])
-@app.schema_generator.stagger_from("./examples/docs/cats_get.yml")
+@app.schema_generator.schema_from("./examples/docs/cats_get.yml")
 def list_cats(req: Request):
     return JSONResponse(list(CATS.values()))
 
 
 @app.route("/cats/", methods=["POST"])
-@app.schema_generator.stagger_from("./examples/docs/cats_post.json")
+@app.schema_generator.schema_from("./examples/docs/cats_post.json")
 async def list_cats(req: Request):
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
 
 
-# add stagger's endpoints
+# add document's endpoints
 schema_path = "/docs/schema/"
 app.add_route("/docs/", UI, methods=["GET"], name="SwaggerUI", include_in_schema=False)
 app.add_route(
     schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
 )
-# config stagger
+# config endpoints
 UI.CONTEXT["schema_url"] = schema_path
 Schema.SCHEMA_LOADER = partial(app.schema_generator.get_schema, app.routes)
 

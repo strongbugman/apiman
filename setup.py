@@ -2,7 +2,7 @@
 from setuptools import setup, find_packages
 import re
 
-with open("stagger/__init__.py", "rt", encoding="utf8") as f:
+with open("starchart/__init__.py", "rt", encoding="utf8") as f:
     version = re.search(r"__version__ = \"(.*?)\"", f.read()).group(1)
 
 requires = ["starlette>=0.9.9", "PyYAML>=3.13", "Jinja2>=2.10"]
@@ -16,17 +16,18 @@ tests_requires = [
 setup_requires = ["pytest-runner>=3.0", "black"]
 
 setup(
-    name="stagger",
+    name="starchart",
     version=version,
-    url="https://github.com/strongbugman/stagger",
-    description="Starlette's Swagger support",
+    url="https://github.com/strongbugman/starchart",
+    description="Starlette's api document support",
     long_description=open("README.md").read(),
     author="Bruce Wu",
     author_email="strongbugman@gmail.com",
     license="BSD",
     classifiers=[
         "Environment :: Console",
-        "Programming Language :: Python :: 3.6+",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Software Development :: Libraries :: Application Frameworks",
         "Topic :: Software Development :: Libraries :: Python Modules",

@@ -1,6 +1,6 @@
 all: test
 
-version=`python -c 'import stagger; print(stagger.__version__)'`
+version=`python -c 'import starchart; print(starchart.__version__)'`
 
 test:
 	black .
