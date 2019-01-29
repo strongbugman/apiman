@@ -16,7 +16,7 @@ pypi_release:
 	./setup.py sdist upload -r pypi
 
 github_release:
-	git push origin --tags
+	git push origin --tags && git push
 
 release: tag github_release pypi_release
 

@@ -11,7 +11,7 @@ from openapi_spec_validator import validate_v2_spec
 from starlette.testclient import TestClient
 
 from starchart.generators import SchemaGenerator
-from starchart.endpoints import UI, Schema
+from starchart.endpoints import SwaggerUI, RedocUI, Schema
 
 
 app = Starlette(debug=True)
@@ -103,20 +103,31 @@ async def list_cats(req: Request):
 
 # add document's endpoints
 schema_path = "/docs/schema/"
-app.add_route("/docs/", UI, methods=["GET"], name="SwaggerUI", include_in_schema=False)
+app.add_route(
+    "/docs/swagger/",
+    SwaggerUI,
+    methods=["GET"],
+    name="SwaggerUI",
+    include_in_schema=False,
+)
+app.add_route(
+    "/docs/redoc/", RedocUI, methods=["GET"], name="SwaggerUI", include_in_schema=False
+)
 app.add_route(
     schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
 )
 # config endpoints
-UI.CONTEXT["schema_url"] = schema_path
-Schema.SCHEMA_LOADER = partial(app.schema_generator.get_schema, app.routes)
+SwaggerUI.set_schema_url(schema_path)
+RedocUI.set_schema_url(schema_path)
+Schema.set_schema_loader(partial(app.schema_generator.get_schema, app.routes))
 
 
 def test_app():
     client = TestClient(app)
     validate_v2_spec(app.schema)
     assert client.get(schema_path).json() == app.schema
-    assert client.get("/docs/").status_code == 200
+    assert client.get("/docs/swagger/").status_code == 200
+    assert client.get("/docs/redoc/").status_code == 200
 
 
 if __name__ == "__main__":

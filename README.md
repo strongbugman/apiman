@@ -33,7 +33,7 @@ from starlette.endpoints import HTTPEndpoint
 from uvicorn import run
 
 from starchart.generators import SchemaGenerator
-from starchart.endpoints import UI, Schema
+from starchart.endpoints import SwaggerUI, RedocUI, Schema
 
 
 app = Starlette(debug=True)
@@ -49,7 +49,7 @@ CATS = {
     1: {"id": 1, "name": "DangDang", "age": 2},
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
-# add schema
+# add schema definition
 app.schema_generator.add_schema(
     "Cat",
     {
@@ -125,13 +125,23 @@ async def list_cats(req: Request):
 
 # add document's endpoints
 schema_path = "/docs/schema/"
-app.add_route("/docs/", UI, methods=["GET"], name="SwaggerUI", include_in_schema=False)
+app.add_route(
+    "/docs/swagger/",
+    SwaggerUI,
+    methods=["GET"],
+    name="SwaggerUI",
+    include_in_schema=False,
+)
+app.add_route(
+    "/docs/redoc/", RedocUI, methods=["GET"], name="SwaggerUI", include_in_schema=False
+)
 app.add_route(
     schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
 )
 # config endpoints
-UI.CONTEXT["schema_url"] = schema_path
-Schema.SCHEMA_LOADER = partial(app.schema_generator.get_schema, app.routes)
+SwaggerUI.set_schema_url(schema_path)
+RedocUI.set_schema_url(schema_path)
+Schema.set_schema_loader(partial(app.schema_generator.get_schema, app.routes))
 
 run(app)
 ```
