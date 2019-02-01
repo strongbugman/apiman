@@ -1,6 +1,6 @@
 """OpenAPI3 example
 """
-from functools import partial
+import asyncio
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -10,22 +10,23 @@ from uvicorn import run
 from openapi_spec_validator import validate_v3_spec
 from starlette.testclient import TestClient
 
-from starchart.generators import SchemaGenerator
-from starchart.endpoints import SwaggerUI, RedocUI, Schema
+from starchart import Starchart
 
 
 app = Starlette(debug=True)
 
-app.schema_generator = SchemaGenerator(
+starchart = Starchart(
     title="Dog store",
     description="Dog store api document",
     version="0.1",
     openapi_version="3.0.0",
 )
+starchart.register(app)
+
 # define data
 DOGS = {1: {"id": 1, "name": "Ping", "age": 2}, 2: {"id": 2, "name": "Pong", "age": 1}}
 # add schema
-app.schema_generator.add_schema(
+starchart.schema_generator.add_schema(
     "Dog",
     {
         "properties": {
@@ -91,46 +92,27 @@ class Dog(HTTPEndpoint):
 
 # define doc by yaml or json file
 @app.route("/dogs/", methods=["GET"])
-@app.schema_generator.schema_from("./examples/docs/dogs_get.yml")
+@starchart.schema_generator.schema_from("./examples/docs/dogs_get.yml")
 def list_dogs(req: Request):
     return JSONResponse(list(DOGS.values()))
 
 
 @app.route("/dogs/", methods=["POST"])
-@app.schema_generator.schema_from("./examples/docs/dogs_post.json")
+@starchart.schema_generator.schema_from("./examples/docs/dogs_post.json")
 async def list_dogs(req: Request):
     dog = await req.json()
     DOGS[dog["id"]] = dog
     return JSONResponse(dog)
 
 
-# add document's endpoints
-schema_path = "/docs/schema/"
-app.add_route(
-    "/docs/swagger/",
-    SwaggerUI,
-    methods=["GET"],
-    name="SwaggerUI",
-    include_in_schema=False,
-)
-app.add_route(
-    "/docs/redoc/", RedocUI, methods=["GET"], name="SwaggerUI", include_in_schema=False
-)
-app.add_route(
-    schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
-)
-# config endpoints
-SwaggerUI.set_schema_url(schema_path)
-RedocUI.set_schema_url(schema_path)
-SwaggerUI.set_title("Cat store")
-RedocUI.set_title("Cat store")
-Schema.set_schema_loader(partial(app.schema_generator.get_schema, app.routes))
-
-
 def test_app():
+    # Trigger app start event
+    handler = app.lifespan_middleware({"type": "lifespan"})
+    asyncio.get_event_loop().run_until_complete(handler.startup())
+
     client = TestClient(app)
     validate_v3_spec(app.schema)
-    assert client.get(schema_path).json() == app.schema
+    assert client.get("/docs/schema/").json() == app.schema
     assert client.get("/docs/swagger/").status_code == 200
     assert client.get("/docs/redoc/").status_code == 200
 

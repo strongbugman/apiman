@@ -171,6 +171,6 @@ standard schema api
 ## TODO
 
 - [x] OpenAPI3 example app
-- [ ] Redoc UI support
-- [ ] Provide a Starlette extension, make it easier to integrate your projects
+- [X] Redoc UI support
+- [X] Provide a Starlette extension, make it easier to integrate your projects
 - [ ] Requset/Response validation by defined schema
