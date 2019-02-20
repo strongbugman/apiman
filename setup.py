@@ -5,7 +5,7 @@ import re
 with open("starchart/__init__.py", "rt", encoding="utf8") as f:
     version = re.search(r"__version__ = \"(.*?)\"", f.read()).group(1)
 
-requires = ["starlette>=0.9.9", "PyYAML>=3.13", "Jinja2>=2.10"]
+requires = ["starlette>=0.11.1", "PyYAML>=3.13", "Jinja2>=2.10"]
 tests_requires = [
     "pytest>=3.3.1",
     "pytest-cov>=2.5.1",

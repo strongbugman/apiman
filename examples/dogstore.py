@@ -107,12 +107,12 @@ async def list_dogs(req: Request):
 
 def test_app():
     # Trigger app start event
-    handler = app.lifespan_middleware({"type": "lifespan"})
-    asyncio.get_event_loop().run_until_complete(handler.startup())
+    asyncio.get_event_loop().run_until_complete(app.router.lifespan.startup())
 
     client = TestClient(app)
-    validate_v3_spec(app.schema)
-    assert client.get("/docs/schema/").json() == app.schema
+    schema = starchart.schema_generator.get_schema(app.routes)
+    validate_v3_spec(schema)
+    assert client.get("/docs/schema/").json() == schema
     assert client.get("/docs/swagger/").status_code == 200
     assert client.get("/docs/redoc/").status_code == 200
 

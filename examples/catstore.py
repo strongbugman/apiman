@@ -124,8 +124,9 @@ Schema.set_schema_loader(partial(app.schema_generator.get_schema, app.routes))
 
 def test_app():
     client = TestClient(app)
-    validate_v2_spec(app.schema)
-    assert client.get(schema_path).json() == app.schema
+    schema = app.schema_generator.get_schema(app.routes)
+    validate_v2_spec(schema)
+    assert client.get(schema_path).json() == schema
     assert client.get("/docs/swagger/").status_code == 200
     assert client.get("/docs/redoc/").status_code == 200
 
