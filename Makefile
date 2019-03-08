@@ -3,8 +3,10 @@ all: test
 version=`python -c 'import starchart; print(starchart.__version__)'`
 
 test:
-	black .
 	python setup.py pytest
+
+black:
+	black starchart tests setup.py
 
 tag:
 	git tag $(version) -m "Release of version $(version)"

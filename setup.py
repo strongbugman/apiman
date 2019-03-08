@@ -13,7 +13,7 @@ tests_requires = [
     "jsonschema<3",
     "uvicorn>=0.3.24",
 ]
-setup_requires = ["pytest-runner>=3.0", "black"]
+setup_requires = ["pytest-runner>=3.0"]
 
 setup(
     name="starchart",
