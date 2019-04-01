@@ -7,9 +7,9 @@ responses:
     content:
       application/json:
         schema:
-          $ref: '#/components/schemas/Dog'
+          $ref: '#/components/schemas/Dogs'
 schemas:
-  Cats:
+  Dogs:
     type: object
     properties:
       objects:
