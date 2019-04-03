@@ -3,39 +3,21 @@
   "tags": [
     "dogs"
   ],
-  "parameters": [
-  {
-    "name": "Dog",
-    "in": "body",
-    "schema": {
-      "type": "object",
-      "required": [
-        "name",
-        "age",
-        "id"
-      ],
-      "properties": {
-        "id": {
-          "type": "integer",
-          "description": "global unique"
-        },
-        "name": {
-          "type": "string",
-          "maxLength": 31,
-          "description": "naming dog"
-        },
-        "age": {
-          "type": "integer"
+  "requestBody": {
+    "required": true,
+    "content": {
+      "application/json": {
+        "schema": {
+          "$ref": "#/components/schemas/Dog"
         }
       }
     }
-  }
-  ],
+  },
   "responses": {
     "201": {
       "description": "OK",
       "content": {
-        "application/json":{
+        "application/json": {
           "schema": {
             "$ref": "#/components/schemas/Dog"
           }
