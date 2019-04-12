@@ -3,6 +3,9 @@ all: test
 version=`python -c 'import starchart; print(starchart.__version__)'`
 
 test:
+	black starchart tests setup.py --check
+	flake8 starchart tests setup.py
+	mypy --ignore-missing-imports starchart
 	python setup.py pytest
 
 black:

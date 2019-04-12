@@ -7,9 +7,11 @@ from jinja2 import Template
 
 import starchart
 
+STATIC_DIR: str = getattr(starchart, "__path__")[0] + "/static"
+
 
 class UI(HTTPEndpoint):
-    TEMPLATE = Template(open(f"{starchart.__path__[0]}/static/index.html").read())
+    TEMPLATE = Template(open(f"{STATIC_DIR}/index.html").read())
     CONTEXT = {"title": "Starchart", "schema_url": "./schema/", "request": None}
 
     def get(self, res: Request) -> Response:
@@ -30,20 +32,18 @@ class UI(HTTPEndpoint):
 
 
 class SwaggerUI(UI):
-    TEMPLATE = Template(
-        open(f"{starchart.__path__[0]}/static/swagger_index.html").read()
-    )
+    TEMPLATE = Template(open(f"{STATIC_DIR}/swagger_index.html").read())
 
 
 class RedocUI(UI):
-    TEMPLATE = Template(open(f"{starchart.__path__[0]}/static/redoc_index.html").read())
+    TEMPLATE = Template(open(f"{STATIC_DIR}/redoc_index.html").read())
 
 
 class Schema(HTTPEndpoint):
-    SCHEMA_LOADER: typing.Callable[[], typing.Dict] = lambda: dict
+    SCHEMA_LOADER: typing.Callable[[], typing.Dict] = lambda: dict()
 
     def get(self, res: Request) -> JSONResponse:
-        return JSONResponse(self.SCHEMA_LOADER())
+        return JSONResponse(self.__class__.SCHEMA_LOADER())
 
     @classmethod
     def set_schema_loader(cls, loader: typing.Callable[[], typing.Dict]) -> None:

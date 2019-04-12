@@ -4,7 +4,7 @@ python:
 - '3.6'
 - '3.7'
 install:
-- pip install codecov black
+- pip install codecov black flake8 mypy
 script: make test
 after_success:
 - codecov
