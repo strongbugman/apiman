@@ -1,0 +1,5 @@
+swagger: '2.0'
+info:
+  title: 'Cat Store'
+  version: '0.1'
+  description: 'A cat store example'

@@ -1,32 +1,20 @@
-"""OpenAPI3 example
+"""OpenAPI3 with flask
 """
-import asyncio
-
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.endpoints import HTTPEndpoint
-from uvicorn import run
+from flask import Flask, jsonify, request
+from flask.views import MethodView
 from openapi_spec_validator import validate_v3_spec
-from starlette.testclient import TestClient
 
-from starchart import Starchart
+from apiman.flask import Extension
 
 
-app = Starlette(debug=True)
-
-starchart = Starchart(
-    title="Dog store",
-    description="Dog store api document",
-    version="0.1",
-    openapi_version="3.0.0",
-)
-starchart.register(app)
+app = Flask(__name__)
+openapi = Extension(template="./examples/docs/dog_template.yml")
+openapi.init_app(app)
 
 # define data
 DOGS = {1: {"id": 1, "name": "Ping", "age": 2}, 2: {"id": 2, "name": "Pong", "age": 1}}
 # add schema
-starchart.schema_generator.add_schema(
+openapi.add_schema(
     "Dog",
     {
         "properties": {
@@ -40,9 +28,8 @@ starchart.schema_generator.add_schema(
 
 
 # define routes and schema(in doc string)
-@app.route("/dog/")
-class Dog(HTTPEndpoint):
-    def get(self, req: Request):
+class DogView(MethodView):
+    def get(self):
         """
         summary: Get single dog
         tags:
@@ -63,9 +50,9 @@ class Dog(HTTPEndpoint):
           "404":
             description: Not found
        """
-        return JSONResponse(DOGS[1])
+        return jsonify(DOGS[1])
 
-    def delete(self, req: Request):
+    def delete(self):
         """
         summary: Delete single dog
         tags:
@@ -87,35 +74,35 @@ class Dog(HTTPEndpoint):
             description: Not found
         """
         dog = DOGS.pop(1)
-        return JSONResponse(dog)
+        return jsonify(dog)
+
+
+app.add_url_rule("/dog/", view_func=DogView.as_view(name="dog"))
 
 
 # define doc by yaml or json file
 @app.route("/dogs/", methods=["GET"])
-@starchart.schema_generator.schema_from("./examples/docs/dogs_get.yml")
-def list_dogs(req: Request):
-    return JSONResponse(list(DOGS.values()))
+@openapi.from_file("./examples/docs/dogs_get.yml")
+def list_dogs():
+    return jsonify(list(DOGS.values()))
 
 
 @app.route("/dogs/", methods=["POST"])
-@starchart.schema_generator.schema_from("./examples/docs/dogs_post.json")
-async def list_dogs(req: Request):
-    dog = await req.json()
+@openapi.from_file("./examples/docs/dogs_post.json")
+def create_dog():
+    dog = request.json()
     DOGS[dog["id"]] = dog
-    return JSONResponse(dog)
+    return jsonify(dog)
 
 
 def test_app():
-    # Trigger app start event
-    asyncio.get_event_loop().run_until_complete(app.router.lifespan.startup())
-
-    client = TestClient(app)
-    schema = starchart.schema_generator.get_schema(app.routes)
-    validate_v3_spec(schema)
-    assert client.get("/docs/schema/").json() == schema
-    assert client.get("/docs/swagger/").status_code == 200
-    assert client.get("/docs/redoc/").status_code == 200
+    client = app.test_client()
+    spec = openapi.load_specification(app)
+    validate_v3_spec(spec)
+    assert client.get(openapi.config["specification_url"]).json == spec
+    assert client.get(openapi.config["swagger_url"]).status_code == 200
+    assert client.get(openapi.config["redoc_url"]).status_code == 200
 
 
 if __name__ == "__main__":
-    run(app)
+    app.run(debug=True)

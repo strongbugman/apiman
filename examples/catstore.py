@@ -1,7 +1,5 @@
-"""OpenAPI2(Swagger) example
+"""OpenAPI2(Swagger) with Starlette
 """
-from functools import partial
-
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -10,25 +8,21 @@ from uvicorn import run
 from openapi_spec_validator import validate_v2_spec
 from starlette.testclient import TestClient
 
-from starchart.generators import SchemaGenerator
-from starchart.endpoints import SwaggerUI, RedocUI, Schema
+from apiman.starlette import Extension
 
 
-app = Starlette(debug=True)
+app = Starlette()
+openapi = Extension(template="./examples/docs/cat_template.yml")
+openapi.init_app(app)
 
-app.schema_generator = SchemaGenerator(
-    title="Cat store",
-    description="Cat store api document",
-    version="0.1",
-    openapi_version="2.0",
-)
+
 # define data
 CATS = {
     1: {"id": 1, "name": "DangDang", "age": 2},
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
 # add schema definition
-app.schema_generator.add_schema(
+openapi.add_schema(
     "Cat",
     {
         "properties": {
@@ -88,47 +82,26 @@ class Cat(HTTPEndpoint):
 
 # define doc by yaml or json file
 @app.route("/cats/", methods=["GET"])
-@app.schema_generator.schema_from("./examples/docs/cats_get.yml")
+@openapi.from_file("./examples/docs/cats_get.yml")
 def list_cats(req: Request):
     return JSONResponse(list(CATS.values()))
 
 
 @app.route("/cats/", methods=["POST"])
-@app.schema_generator.schema_from("./examples/docs/cats_post.json")
+@openapi.from_file("./examples/docs/cats_post.json")
 async def list_cats(req: Request):
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
 
 
-# add document's endpoints
-schema_path = "/docs/schema/"
-app.add_route(
-    "/docs/swagger/",
-    SwaggerUI,
-    methods=["GET"],
-    name="SwaggerUI",
-    include_in_schema=False,
-)
-app.add_route(
-    "/docs/redoc/", RedocUI, methods=["GET"], name="SwaggerUI", include_in_schema=False
-)
-app.add_route(
-    schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
-)
-# config endpoints
-SwaggerUI.set_schema_url(schema_path)
-RedocUI.set_schema_url(schema_path)
-Schema.set_schema_loader(partial(app.schema_generator.get_schema, app.routes))
-
-
 def test_app():
     client = TestClient(app)
-    schema = app.schema_generator.get_schema(app.routes)
-    validate_v2_spec(schema)
-    assert client.get(schema_path).json() == schema
-    assert client.get("/docs/swagger/").status_code == 200
-    assert client.get("/docs/redoc/").status_code == 200
+    spec = openapi.load_specification(app)
+    validate_v2_spec(spec)
+    assert client.get(openapi.config["specification_url"]).json() == spec
+    assert client.get(openapi.config["swagger_url"]).status_code == 200
+    assert client.get(openapi.config["redoc_url"]).status_code == 200
 
 
 if __name__ == "__main__":

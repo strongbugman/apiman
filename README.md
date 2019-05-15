@@ -1,56 +1,52 @@
-# Starchart
+# APIMAN
 
-## API document support for Starlette project
+![Build](https://travis-ci.com/strongbugman/api.svg?branch=master)
+![Code Coverage](https://codecov.io/gh/strongbugman/apiman/branch/master/graph/badge.svg)
 
-![Build](https://travis-ci.com/strongbugman/starchart.svg?branch=master)
-![Code Coverage](https://codecov.io/gh/strongbugman/starchart/branch/master/graph/badge.svg)
+APIMAN provide a easy way to integrate api manual/document for your web project
 
 ## Features
 
-* Inherit `starlette.schemas.BaseSchemaGenerator` 
-* Support OpenAPI 2 and 3, define API schema by your way
-* Provide configurable [SwaggerUI](http://swagger.io/swagger-ui/)
-* ...
+* Support OpenAPI 2 and 3 specification, define API specification by file or doc
+* Provide configurable [SwaggerUI](http://swagger.io/swagger-ui/) and [RedocUI](https://rebilly.github.io/ReDoc/)
+* Outbox extension for flask and Starlette
 
 ## Install
 
 ```shell
-pip install -U starchart
+pip install -U apiman
 ```
 
-## Tutorial
+## Examples
 
-Let see a simple example app:
+Let's see a Starlette example app:
+
 ```python
-"""OpenAPI2(Swagger) example
+"""OpenAPI2(Swagger) with Starlette
 """
-from functools import partial
-
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.endpoints import HTTPEndpoint
 from uvicorn import run
+from openapi_spec_validator import validate_v2_spec
+from starlette.testclient import TestClient
 
-from starchart.generators import SchemaGenerator
-from starchart.endpoints import SwaggerUI, RedocUI, Schema
+from apiman.starlette import Extension
 
 
-app = Starlette(debug=True)
+app = Starlette()
+openapi = Extension(template="./examples/docs/cat_template.yml")
+openapi.init_app(app)
 
-app.schema_generator = SchemaGenerator(
-    title="Cat store",
-    description="Cat store api document",
-    version="0.1",
-    openapi_version="2.0",
-)
+
 # define data
 CATS = {
     1: {"id": 1, "name": "DangDang", "age": 2},
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
 # add schema definition
-app.schema_generator.add_schema(
+openapi.add_schema(
     "Cat",
     {
         "properties": {
@@ -110,67 +106,38 @@ class Cat(HTTPEndpoint):
 
 # define doc by yaml or json file
 @app.route("/cats/", methods=["GET"])
-@app.schema_generator.schema_from("./examples/docs/cats_get.yml")
+@openapi.from_file("./examples/docs/cats_get.yml")
 def list_cats(req: Request):
     return JSONResponse(list(CATS.values()))
 
 
 @app.route("/cats/", methods=["POST"])
-@app.schema_generator.schema_from("./examples/docs/cats_post.json")
+@openapi.from_file("./examples/docs/cats_post.json")
 async def list_cats(req: Request):
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
 
 
-# add document's endpoints
-schema_path = "/docs/schema/"
-app.add_route(
-    "/docs/swagger/",
-    SwaggerUI,
-    methods=["GET"],
-    name="SwaggerUI",
-    include_in_schema=False,
-)
-app.add_route(
-    "/docs/redoc/", RedocUI, methods=["GET"], name="SwaggerUI", include_in_schema=False
-)
-app.add_route(
-    schema_path, Schema, methods=["GET"], name="SwaggerSchema", include_in_schema=False
-)
-# config endpoints
-SwaggerUI.set_schema_url(schema_path)
-RedocUI.set_schema_url(schema_path)
-Schema.set_schema_loader(partial(app.schema_generator.get_schema, app.routes))
+def test_app():
+    client = TestClient(app)
+    spec = openapi.load_specification(app)
+    validate_v2_spec(spec)
+    assert client.get(openapi.config["specification_url"]).json() == spec
+    assert client.get(openapi.config["swagger_url"]).status_code == 200
+    assert client.get(openapi.config["redoc_url"]).status_code == 200
 
-run(app)
+
+if __name__ == "__main__":
+    run(app)
 ```
 
-Then we can get swagger UI:
-![](docs/SwaggerUI.jpg)
+Then we can get swagger web page at [http://localhost:8000/apiman/swagger/](http://localhost:8000/apiman/swagger/):
+![WebPage](docs/SwaggerUI.jpg)
 
-## More examples
+See **examples/** for more examples
 
-See **examples/**
+## How it works
 
-
-## Details
-
-### How can I define endpoints schema?
-
-* Function or method's docstring
-* From yaml or json file(by `schema_from`)
-* ...
-
-### How the swagger UI works?
-
-We provide two endpoints: a standard web page (see *starchart/static/index.html*) and a 
-standard schema api
-
-
-## TODO
-
-- [x] OpenAPI3 example app
-- [X] Redoc UI support
-- [X] Provide a Starlette extension, make it easier to integrate your projects
-- [ ] Requset/Response validation by defined schema
+* Provide a base class("OpenApi") to handle api specification's collection
+* Provide extentions to extract api specification and register http endpoints to show UI web page and specification

@@ -1,15 +1,15 @@
 all: test
 
-version=`python -c 'import starchart; print(starchart.__version__)'`
+version=`python -c 'import apiman; print(apiman.__version__)'`
 
 test:
-	black starchart tests setup.py --check
-	flake8 starchart tests setup.py
-	mypy --ignore-missing-imports starchart
+	black apiman tests setup.py --check
+	flake8 apiman tests setup.py
+	mypy --ignore-missing-imports apiman
 	python setup.py pytest
 
 black:
-	black starchart tests setup.py
+	black apiman tests setup.py
 
 tag:
 	git tag $(version) -m "Release of version $(version)"
@@ -17,8 +17,8 @@ tag:
 sdist:
 	./setup.py sdist
 
-pypi_release:
-	./setup.py sdist upload -r pypi
+pypi_release: clean
+	./setup.py sdist && twine upload dist/*
 
 github_release:
 	git push origin --tags && git push
