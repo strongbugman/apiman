@@ -1,7 +1,7 @@
 # APIMAN
 
-![Build](https://travis-ci.com/strongbugman/api.svg?branch=master)
-![Code Coverage](https://codecov.io/gh/strongbugman/apiman/branch/master/graph/badge.svg)
+[![Build](https://travis-ci.com/strongbugman/apiman.svg?branch=master)](https://travis-ci.com/strongbugman/apiman)
+[![codecov](https://codecov.io/gh/strongbugman/apiman/branch/master/graph/badge.svg)](https://codecov.io/gh/strongbugman/apiman)
 
 APIMAN provide a easy way to integrate api manual/document for your web project
 
