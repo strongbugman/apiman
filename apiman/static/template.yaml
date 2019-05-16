@@ -1,0 +1,5 @@
+openapi: "3.0.0"
+info:
+  title: 'APIMAN'
+  version: '0.1'
+  description: 'API manual'

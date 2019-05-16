@@ -41,13 +41,7 @@ class Extension(OpenApi):
     def load_specification(self, app: Starlette) -> typing.Dict:
         if app.debug or not self.loaded:
             for endpoint in SchemaGenerator({}).get_endpoints(app.routes):
-                specification = self.from_doc(endpoint.func)
-                if not specification and hasattr(
-                    endpoint.func, self.SPECIFICATION_FILE
-                ):
-                    specification = self.load_file(
-                        getattr(endpoint.func, self.SPECIFICATION_FILE)
-                    )
+                specification = self.from_func(endpoint.func)
                 if specification:
                     self._load_specification(
                         endpoint.path, endpoint.http_method, specification

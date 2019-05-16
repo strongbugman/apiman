@@ -33,15 +33,39 @@ class Extension(OpenApi):
         if app.debug or not self.loaded:
             for route in app.url_map.iter_rules():
                 func = app.view_functions[route.endpoint]
-                for method in route.methods:
-                    _func = getattr(func, method, func)
-                    specification = self.from_doc(_func)
-                    if not specification and hasattr(_func, self.SPECIFICATION_FILE):
-                        specification = self.load_file(
-                            getattr(_func, self.SPECIFICATION_FILE)
-                        )
-                    if specification:
-                        self._load_specification(route.rule, method, specification)
+                if hasattr(func, "view_class"):  # view class
+                    for method in route.methods:
+                        try:
+                            _func = getattr(func.view_class, method.lower())
+                        except AttributeError:
+                            continue
+                        specification = self.from_func(_func)
+                        if specification:
+                            self._load_specification(route.rule, method, specification)
+                else:  # view function
+                    specification = self.from_func(func)
+                    if not specification:
+                        continue
+                    if set(specification.keys()) & {
+                        "head",
+                        "get",
+                        "post",
+                        "put",
+                        "patch",
+                        "delete",
+                        "options",
+                    }:
+                        # the specification include multi method descriptino
+                        for method in specification.keys():
+                            self._load_specification(
+                                route.rule, method, specification[method]
+                            )
+                    else:
+                        for method in route.methods:
+                            # Almost HEAD or OPTIONS set by flask, ignore by default
+                            if method in ("HEAD", "OPTIONS"):
+                                continue
+                            self._load_specification(route.rule, method, specification)
             self.loaded = True
             return self.specification
         else:

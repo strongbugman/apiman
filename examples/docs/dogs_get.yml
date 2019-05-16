@@ -1,18 +1,19 @@
-summary: Get all dogs
-tags:
-  - dogs
-responses:
-  "201":
-    description: OK
-    content:
-      application/json:
-        schema:
-          $ref: '#/components/schemas/Dogs'
-schemas:
-  Dogs:
-    type: object
-    properties:
-      objects:
-        type: array
-        items:
-          $ref: '#/components/schemas/Dog'
+get:
+  summary: Get all dogs
+  tags:
+    - dogs
+  responses:
+    "201":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Dogs'
+  schemas:
+    Dogs:
+      type: object
+      properties:
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dog'

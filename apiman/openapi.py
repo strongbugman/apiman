@@ -54,18 +54,24 @@ class OpenApi:
 
         return decorator
 
-    def from_doc(self, func_or_method: typing.Callable) -> typing.Dict:
-        if not func_or_method.__doc__:
+    def from_doc(self, func: typing.Callable) -> typing.Dict:
+        if not func.__doc__:
             return {}
 
         try:
-            spec = yaml.safe_load(func_or_method.__doc__.split("---")[-1])
+            spec = yaml.safe_load(func.__doc__.split("---")[-1])
         except ScannerError:
             return {}
         if not isinstance(spec, dict):
             return {}
 
         return spec
+
+    def from_func(self, func: typing.Callable) -> typing.Dict:
+        specification = self.from_doc(func)
+        if not specification and hasattr(func, self.SPECIFICATION_FILE):
+            specification = self.load_file(getattr(func, self.SPECIFICATION_FILE))
+        return specification
 
     def _load_specification(self, path: str, method: str, specification: typing.Dict):
         schemas = specification.pop("definitions" if self.is_swagger else "schemas", {})
