@@ -7,7 +7,14 @@ from .openapi import OpenApi
 
 
 class Extension(OpenApi):
+    def __init__(self, *args, app: typing.Optional[Flask] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.app = app
+        self.init_app(self.app) if self.app else None
+
     def init_app(self, app: Flask):
+        app.extensions["apiman"] = self
+
         self.config.update(app.config.get_namespace("OPNEAPI_", lowercase=True))
 
         if self.config["swagger_template"] and self.config["swagger_url"]:
