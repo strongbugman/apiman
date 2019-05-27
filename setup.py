@@ -9,8 +9,7 @@ requires = ["PyYAML>=3.13", "Jinja2>=2.10"]
 tests_requires = [
     "pytest>=3.3.1",
     "pytest-cov>=2.5.1",
-    "openapi_spec_validator==0.2.5",
-    "jsonschema<3",
+    "openapi_spec_validator>=0.2.7",
     "uvicorn>=0.3.24",
     "starlette>=0.11.1",
     "flask>=1.0",
