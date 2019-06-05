@@ -8,7 +8,7 @@ from apiman.flask import Extension
 
 
 app = Flask(__name__)
-openapi = Extension(template="./examples/docs/dog_template.yml")
+openapi = Extension(template="./examples/docs/dog_template.yml", decorators=(lambda f: f,))
 openapi.init_app(app)
 
 # define data

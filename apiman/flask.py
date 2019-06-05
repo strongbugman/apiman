@@ -7,9 +7,18 @@ from .openapi import OpenApi
 
 
 class Extension(OpenApi):
-    def __init__(self, *args, app: typing.Optional[Flask] = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        app: typing.Optional[Flask] = None,
+        decorators: typing.Sequence[
+            typing.Callable[[typing.Callable], typing.Callable]
+        ] = tuple(),
+        **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.app = app
+        self.decorators = decorators
         self.init_app(self.app) if self.app else None
 
     def init_app(self, app: Flask):
@@ -21,20 +30,26 @@ class Extension(OpenApi):
             swagger_html = Template(
                 open(self.config["swagger_template"]).read()
             ).render(self.config)
-            app.route(
-                self.config["swagger_url"], methods=["GET"], endpoint="swagger_ui"
-            )(lambda: Response(swagger_html))
+            self.route(
+                app,
+                self.config["swagger_url"],
+                "swagger_ui",
+                lambda: Response(swagger_html),
+            )
         if self.config["redoc_template"] and self.config["redoc_url"]:
             redoc_html = Template(open(self.config["redoc_template"]).read()).render(
                 self.config
             )
-            app.route(self.config["redoc_url"], methods=["GET"], endpoint="redoc_ui")(
-                lambda: Response(redoc_html)
+            self.route(
+                app, self.config["redoc_url"], "redoc_ui", lambda: Response(redoc_html)
             )
         if self.config["specification_url"]:
-            app.route(
-                self.config["specification_url"], endpoint="openapi_specification"
-            )(lambda: jsonify(self.load_specification(app)))
+            self.route(
+                app,
+                self.config["specification_url"],
+                "openapi_specification",
+                lambda: jsonify(self.load_specification(app)),
+            )
 
     def load_specification(self, app: Flask) -> typing.Dict:
         if app.debug or not self.loaded:
@@ -77,3 +92,8 @@ class Extension(OpenApi):
             return self.specification
         else:
             return self.specification
+
+    def route(self, app: Flask, url: str, endpoint: str, func):
+        for decorator in self.decorators:
+            func = decorator(func)
+        app.route(url, endpoint=endpoint, methods=["GET"])(func)
