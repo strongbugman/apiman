@@ -8,7 +8,9 @@ from apiman.flask import Extension
 
 
 app = Flask(__name__)
-openapi = Extension(template="./examples/docs/dog_template.yml", decorators=(lambda f: f,))
+openapi = Extension(
+    template="./examples/docs/dog_template.yml", decorators=(lambda f: f,)
+)
 openapi.init_app(app)
 
 # define data
@@ -29,31 +31,36 @@ openapi.add_schema(
 
 # define routes and schema(in doc string)
 class DogView(MethodView):
+    """
+    Declare multi method
+    ---
+    get:
+      summary: Get single dog
+      tags:
+      - dog
+      parameters:
+      - name: id
+        in: query
+        required: True
+        schema:
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dog'
+        "404":
+          description: Not found
+    """
     def get(self):
-        """
-        summary: Get single dog
-        tags:
-        - dog
-        parameters:
-        - name: id
-          in: query
-          required: True
-          schema:
-            type: integer
-        responses:
-          "200":
-            description: OK
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Dog'
-          "404":
-            description: Not found
-       """
         return jsonify(DOGS[1])
 
     def delete(self):
         """
+        Declare single method
+        ---
         summary: Delete single dog
         tags:
         - dog

@@ -56,6 +56,16 @@ class Extension(OpenApi):
             for route in app.url_map.iter_rules():
                 func = app.view_functions[route.endpoint]
                 if hasattr(func, "view_class"):  # view class
+                    # from class
+                    specification = self.from_func(
+                        func.view_class
+                    )  # the specification include multi method description
+                    if set(specification.keys()) & self.HTTP_METHODS:
+                        for method in specification.keys():
+                            self._load_specification(
+                                route.rule, method, specification[method]
+                            )
+                    # from class methods
                     for method in route.methods:
                         try:
                             _func = getattr(func.view_class, method.lower())
@@ -68,16 +78,7 @@ class Extension(OpenApi):
                     specification = self.from_func(func)
                     if not specification:
                         continue
-                    if set(specification.keys()) & {
-                        "head",
-                        "get",
-                        "post",
-                        "put",
-                        "patch",
-                        "delete",
-                        "options",
-                    }:
-                        # the specification include multi method descriptino
+                    if set(specification.keys()) & self.HTTP_METHODS:
                         for method in specification.keys():
                             self._load_specification(
                                 route.rule, method, specification[method]
