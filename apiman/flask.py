@@ -14,7 +14,7 @@ class Extension(OpenApi):
         decorators: typing.Sequence[
             typing.Callable[[typing.Callable], typing.Callable]
         ] = tuple(),
-        **kwargs
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.app = app
@@ -98,3 +98,14 @@ class Extension(OpenApi):
         for decorator in self.decorators:
             func = decorator(func)
         app.route(url, endpoint=endpoint, methods=["GET"])(func)
+
+    def _load_specification(self, path: str, method: str, specification: typing.Dict):
+        # covert flask variable rules, eg "/path/<int:id>" to "/path/{id}"
+        _subs = []
+        for _sub in path.split("/"):
+            if _sub.startswith("<") and _sub.endswith(">"):
+                _subs.append(f"{{{_sub[1:-1].split(':')[-1]}}}")
+            else:
+                _subs.append(_sub)
+
+        return super()._load_specification("/".join(_subs), method, specification)

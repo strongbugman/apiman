@@ -1,6 +1,6 @@
 """OpenAPI3 with flask
 """
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 from flask.views import MethodView
 from openapi_spec_validator import validate_v3_spec
 
@@ -40,7 +40,7 @@ class DogView(MethodView):
       - dog
       parameters:
       - name: id
-        in: query
+        in: path
         required: True
         schema:
           type: integer
@@ -54,10 +54,11 @@ class DogView(MethodView):
         "404":
           description: Not found
     """
-    def get(self):
-        return jsonify(DOGS[1])
 
-    def delete(self):
+    def get(self, id):
+        return jsonify(DOGS[id])
+
+    def delete(self, id):
         """
         Declare single method
         ---
@@ -66,25 +67,21 @@ class DogView(MethodView):
         - dog
         parameters:
         - name: id
-          in: query
+          in: path
           required: True
           schema:
             type: integer
         responses:
           "204":
             description: OK
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/Dog'
           "404":
             description: Not found
         """
-        dog = DOGS.pop(1)
-        return jsonify(dog)
+        DOGS.pop(id)
+        return Response(status=204)
 
 
-app.add_url_rule("/dog/", view_func=DogView.as_view(name="dog"))
+app.add_url_rule("/dog/<int:id>", view_func=DogView.as_view(name="dog"))
 
 
 # define doc by yaml or json file
