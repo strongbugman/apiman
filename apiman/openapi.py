@@ -15,7 +15,7 @@ class OpenApi:
     SPECIFICATION_FILE = "__spec_file__"
     CONFIG = {
         "title": "OpenAPI Document",
-        "specification_url": "/apiman/schema/",
+        "specification_url": "/apiman/specification/",
         "swagger_url": "/apiman/swagger/",
         "redoc_url": "/apiman/redoc/",
         "swagger_template": f"{STATIC_DIR}swagger.html",
