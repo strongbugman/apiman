@@ -12,7 +12,7 @@ from apiman.starlette import Extension
 
 
 app = Starlette()
-openapi = Extension(template="./examples/docs/cat_template.yml")
+openapi = Extension(template="./examples/docs/cat_template.yml", decorators=(lambda f: f, ))
 openapi.init_app(app)
 
 
