@@ -1,9 +1,10 @@
 import typing
+import copy
 
 from starlette.applications import Starlette
 from starlette.responses import Response, JSONResponse
 from starlette.requests import Request
-from starlette.schemas import SchemaGenerator
+from starlette.routing import Mount
 from jinja2 import Template
 
 from .openapi import OpenApi
@@ -47,12 +48,41 @@ class Extension(OpenApi):
 
     def load_specification(self, app: Starlette) -> typing.Dict:
         if app.debug or not self.loaded:
-            for endpoint in SchemaGenerator({}).get_endpoints(app.routes):
-                specification = self.from_func(endpoint.func)
-                if specification:
-                    self._load_specification(
-                        endpoint.path, endpoint.http_method, specification
-                    )
+            routes = copy.deepcopy(app.routes)
+            while routes:
+                route = routes.pop()
+                if isinstance(route, Mount) and route.routes:
+                    for _route in route.routes:
+                        _route.path = route.path + _route.path
+                        routes.append(_route)
+                    continue
+
+                if not route.include_in_schema:
+                    continue
+
+                if isinstance(route.endpoint, type):
+                    # load from class
+                    specification = self.from_func(route.endpoint)
+                    if specification:
+                        if set(specification.keys()) & self.HTTP_METHODS:
+                            for method in specification.keys():
+                                self._load_specification(
+                                    route.path, method, specification[method]
+                                )
+                    # load from single method
+                    for method in self.HTTP_METHODS:
+                        func = getattr(route.endpoint, method, lambda _: _)
+                        specification = self.from_func(func)
+                        if specification:
+                            self._load_specification(route.path, method, specification)
+                else:
+                    for method in route.methods:
+                        if method == "HEAD":  # add by starlette in common
+                            continue
+                        specification = self.from_func(route.endpoint)
+                        if specification:
+                            self._load_specification(route.path, method, specification)
+
             self.loaded = True
             return self.specification
         else:

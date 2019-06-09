@@ -62,35 +62,41 @@ openapi.add_schema(
 # define routes and schema(in doc string)
 @app.route("/cat/")
 class Cat(HTTPEndpoint):
+    """
+    Declare multi method
+    ---
+    get:
+      summary: Get single cat
+      tags:
+      - cat
+      parameters:
+      - name: id
+        type: integer
+        in: path
+        required: True
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/Cat'
+        "404":
+          description: Not found
+    """
+
     def get(self, req: Request):
-        """
-        summary: Get single cat
-        tags:
-        - cat
-        parameters:
-        - name: id
-          type: integer
-          in: query
-          required: True
-        responses:
-          "200":
-            description: OK
-            schema:
-              $ref: '#/definitions/Cat'
-          "404":
-            description: Not found
-       """
-        return JSONResponse(CATS[1])
+        return JSONResponse(CATS[int(req.path_params["id"])])
 
     def delete(self, req: Request):
         """
+        Declare single method
+        ---
         summary: Delete single cat
         tags:
         - cat
         parameters:
         - name: id
           type: integer
-          in: query
+          in: path
           required: True
         responses:
           "204":
@@ -100,7 +106,7 @@ class Cat(HTTPEndpoint):
           "404":
             description: Not found
         """
-        cat = CATS.pop(1)
+        cat = CATS.pop(int(req.path_params["id"]))
         return JSONResponse(cat)
 
 
@@ -117,15 +123,6 @@ async def list_cats(req: Request):
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
-
-
-def test_app():
-    client = TestClient(app)
-    spec = openapi.load_specification(app)
-    validate_v2_spec(spec)
-    assert client.get(openapi.config["specification_url"]).json() == spec
-    assert client.get(openapi.config["swagger_url"]).status_code == 200
-    assert client.get(openapi.config["redoc_url"]).status_code == 200
 
 
 if __name__ == "__main__":
