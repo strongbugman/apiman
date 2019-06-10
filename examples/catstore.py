@@ -102,7 +102,7 @@ async def create_cat(req: Request):
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
-  
+
 
 app.mount("/", sub_app)
 
