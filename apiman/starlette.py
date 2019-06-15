@@ -48,7 +48,7 @@ class Extension(OpenApi):
     def load_specification(
         self, app: Starlette, mount: typing.Optional[Mount] = None, base_path=""
     ) -> typing.Dict:
-        if app.debug or not self.loaded:
+        if not self.loaded:
             for route in mount.routes if mount else app.routes:
                 if isinstance(route, Mount) and route.routes:
                     self.loaded = False

@@ -52,7 +52,7 @@ class Extension(OpenApi):
             )
 
     def load_specification(self, app: Flask) -> typing.Dict:
-        if app.debug or not self.loaded:
+        if not self.loaded:
             for route in app.url_map.iter_rules():
                 func = app.view_functions[route.endpoint]
                 if hasattr(func, "view_class"):  # view class

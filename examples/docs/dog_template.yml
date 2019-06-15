@@ -3,3 +3,11 @@ info:
   title: 'Dog Store'
   version: '0.1'
   description: 'A dog store example'
+paths:
+  /health/:
+    get:
+      tags:
+        - Not implement
+      responses:
+        "200":
+          description: OK

@@ -56,6 +56,9 @@ class DogView(MethodView):
     """
 
     def get(self, id):
+        """
+        Normal annotation will be ignored
+        """
         return jsonify(DOGS[id])
 
     def delete(self, id):
