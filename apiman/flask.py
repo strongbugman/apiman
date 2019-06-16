@@ -16,6 +16,29 @@ class Extension(OpenApi):
         ] = tuple(),
         **kwargs,
     ):
+        """Flask extension
+
+        >>> app = Flask(__name__)
+        >>> openapi = Extension(
+        ...     template="./examples/docs/dog_template.yml", decorators=(lambda f: f,)
+        ... )
+        >>> openapi.init_app(app)
+        >>> openapi.add_schema(
+        ...     "Dog",
+        ...     {
+        ...         "properties": {
+        ...             "id": {"description": "global unique", "type": "integer"},
+        ...             "name": {"type": "string"},
+        ...             "age": {"type": "integer"},
+        ...         },
+        ...         "type": "object",
+        ...     },
+        ... )
+        >>> @app.route("/dogs/", methods=["GET"])
+        ... @openapi.from_file("./examples/docs/dogs_get.yml")
+        ... def list_dogs():
+        ...     return jsonify(list(DOGS.values()))
+        """
         super().__init__(*args, **kwargs)
         self.app = app
         self.decorators = decorators

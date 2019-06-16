@@ -22,6 +22,29 @@ class Extension(OpenApi):
         ] = tuple(),
         **config
     ):
+        """Starlette extention
+
+        >>> app = Starlette()
+        >>> openapi = Extension(
+        ...     template="./examples/docs/cat_template.yml", decorators=(lambda f: f,)
+        ... )
+        >>> openapi.init_app(app)
+        >>> openapi.add_schema(
+        ...     "Cat",
+        ...     {
+        ...         "properties": {
+        ...             "id": {"description": "global unique", "type": "integer"},
+        ...             "name": {"type": "string"},
+        ...             "age": {"type": "integer"},
+        ...         },
+        ...         "type": "object",
+        ...     },
+        ... )
+        >>> @app.route("/cats/", methods=["GET"])
+        ... @openapi.from_file("./examples/docs/cats_get.yml")
+        ... def list_cats(req: Request):
+        ...     return JSONResponse(list(CATS.values()))
+        """
         super().__init__(**config)
         self.decorators = decorators
 
