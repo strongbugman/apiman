@@ -74,12 +74,13 @@ class OpenApi:
             specification = self.load_file(getattr(func, self.SPECIFICATION_FILE))
         return specification
 
-    def _load_specification(self, path: str, method: str, specification: typing.Dict):
-        schemas = specification.pop("definitions" if self.is_swagger else "schemas", {})
-        for name, schema in schemas.items():
-            self.add_schema(name, schema)
-
-        self.specification["paths"][path][method.lower()] = specification
+    def _load_specification(
+        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+    ):
+        if method:
+            self.specification["paths"][path][method.lower()] = specification
+        else:
+            self.specification["paths"][path] = specification
 
     @staticmethod
     def load_file(file_path: str) -> typing.Dict:

@@ -80,38 +80,33 @@ class Extension(OpenApi):
                 func = app.view_functions[route.endpoint]
                 if hasattr(func, "view_class"):  # view class
                     # from class
-                    specification = self.from_func(
-                        func.view_class
-                    )  # the specification include multi method description
-                    if set(specification.keys()) & self.HTTP_METHODS:
-                        for method in specification.keys():
-                            self._load_specification(
-                                route.rule, method, specification[method]
-                            )
+                    specification = self.from_func(func.view_class)
+                    self._load_specification(route.rule, specification)
                     # from class methods
                     for method in route.methods:
-                        try:
-                            _func = getattr(func.view_class, method.lower())
-                        except AttributeError:
-                            continue
-                        specification = self.from_func(_func)
-                        if specification:
-                            self._load_specification(route.rule, method, specification)
+                        _func = getattr(func.view_class, method.lower(), None)
+                        if _func:
+                            specification = self.from_func(_func)
+                            if specification:
+                                self._load_specification(
+                                    route.rule, specification, method=method
+                                )
                 else:  # view function
                     specification = self.from_func(func)
                     if not specification:
                         continue
-                    if set(specification.keys()) & self.HTTP_METHODS:
-                        for method in specification.keys():
-                            self._load_specification(
-                                route.rule, method, specification[method]
-                            )
+                    if (
+                        set(specification.keys()) & self.HTTP_METHODS
+                    ):  # multi method description
+                        self._load_specification(route.rule, specification)
                     else:
                         for method in route.methods:
                             # Almost HEAD or OPTIONS set by flask, ignore by default
                             if method in ("HEAD", "OPTIONS"):
                                 continue
-                            self._load_specification(route.rule, method, specification)
+                            self._load_specification(
+                                route.rule, specification, method=method
+                            )
             self.loaded = True
             return self.specification
         else:
@@ -122,7 +117,9 @@ class Extension(OpenApi):
             func = decorator(func)
         app.route(url, endpoint=endpoint, methods=["GET"])(func)
 
-    def _load_specification(self, path: str, method: str, specification: typing.Dict):
+    def _load_specification(
+        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+    ):
         # covert flask variable rules, eg "/path/<int:id>" to "/path/{id}"
         _subs = []
         for _sub in path.split("/"):
@@ -131,4 +128,6 @@ class Extension(OpenApi):
             else:
                 _subs.append(_sub)
 
-        return super()._load_specification("/".join(_subs), method, specification)
+        return super()._load_specification(
+            "/".join(_subs), specification, method=method
+        )

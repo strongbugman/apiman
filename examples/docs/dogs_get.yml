@@ -9,11 +9,3 @@ get:
         application/json:
           schema:
             $ref: '#/components/schemas/Dogs'
-  schemas:
-    Dogs:
-      type: object
-      properties:
-        objects:
-          type: array
-          items:
-            $ref: '#/components/schemas/Dog'

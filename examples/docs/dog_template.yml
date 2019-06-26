@@ -11,3 +11,12 @@ paths:
       responses:
         "200":
           description: OK
+components:
+  schemas:
+    Dogs:
+      type: object
+      properties:
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dog'

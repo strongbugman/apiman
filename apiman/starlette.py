@@ -3,7 +3,7 @@ import typing
 from starlette.applications import Starlette
 from starlette.responses import Response, JSONResponse
 from starlette.requests import Request
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
 from jinja2 import Template
 
 from .openapi import OpenApi
@@ -78,39 +78,47 @@ class Extension(OpenApi):
                     self.load_specification(
                         app, mount=route, base_path=base_path + route.path
                     )
-                    continue
+                elif isinstance(route, Route):
+                    if not route.include_in_schema:
+                        continue
 
-                if not route.include_in_schema:
-                    continue
-
-                if isinstance(route.endpoint, type):
-                    # load from class
-                    specification = self.from_func(route.endpoint)
-                    if specification:
-                        if set(specification.keys()) & self.HTTP_METHODS:
-                            for method in specification.keys():
-                                self._load_specification(
-                                    base_path + route.path,
-                                    method,
-                                    specification[method],
-                                )
-                    # load from single method
-                    for method in self.HTTP_METHODS:
-                        func = getattr(route.endpoint, method, lambda _: _)
-                        specification = self.from_func(func)
-                        if specification:
-                            self._load_specification(
-                                base_path + route.path, method, specification
-                            )
-                else:
-                    for method in route.methods:
-                        if method == "HEAD":  # add by starlette in common
-                            continue
+                    if isinstance(route.endpoint, type):  # for endpoint class
+                        # load from endpoint class
                         specification = self.from_func(route.endpoint)
                         if specification:
                             self._load_specification(
-                                base_path + route.path, method, specification
+                                base_path + route.path, specification
                             )
+                        # load from single method
+                        for method in self.HTTP_METHODS:
+                            func = getattr(route.endpoint, method, None)
+                            if func:
+                                specification = self.from_func(func)
+                                if specification:
+                                    self._load_specification(
+                                        base_path + route.path,
+                                        specification,
+                                        method=method,
+                                    )
+                    else:  # for endpoint function
+                        specification = self.from_func(route.endpoint)
+                        if specification:
+                            if (
+                                set(specification.keys()) & self.HTTP_METHODS
+                            ):  # multi method description
+                                self._load_specification(
+                                    base_path + route.path, specification
+                                )
+                            elif route.methods:
+                                for method in route.methods:
+                                    if (
+                                        not method == "HEAD"
+                                    ):  # add by starlette in common
+                                        self._load_specification(
+                                            base_path + route.path,
+                                            specification,
+                                            method=method,
+                                        )
 
             self.loaded = True
             return self.specification

@@ -1,16 +1,9 @@
-summary: Get all cats
-tags:
-  - cats
-responses:
-  "201":
-    description: OK
-    schema:
-      $ref: '#/definitions/Cats'
-definitions:
-  Cats:
-    type: object
-    properties:
-      objects:
-        type: array
-        items:
-          $ref: "#/definitions/Cat"
+get:
+  summary: Get all cats
+  tags:
+    - cats
+  responses:
+    "201":
+      description: OK
+      schema:
+        $ref: '#/definitions/Cats'

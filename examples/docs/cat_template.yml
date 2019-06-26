@@ -3,3 +3,11 @@ info:
   title: 'Cat Store'
   version: '0.1'
   description: 'A cat store example'
+definitions:
+  Cats:
+    type: object
+    properties:
+      objects:
+        type: array
+        items:
+          $ref: "#/definitions/Cat"
