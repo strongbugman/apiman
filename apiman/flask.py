@@ -101,12 +101,10 @@ class Extension(OpenApi):
                         self._load_specification(route.rule, specification)
                     else:
                         for method in route.methods:
-                            # Almost HEAD or OPTIONS set by flask, ignore by default
-                            if method in ("HEAD", "OPTIONS"):
-                                continue
-                            self._load_specification(
-                                route.rule, specification, method=method
-                            )
+                            if method.lower() in self.HTTP_METHODS:
+                                self._load_specification(
+                                    route.rule, specification, method=method
+                                )
             self.loaded = True
             return self.specification
         else:

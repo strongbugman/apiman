@@ -12,7 +12,7 @@ STATIC_DIR = f"{getattr(apiman, '__path__')[0]}/static/"
 
 
 class OpenApi:
-    HTTP_METHODS = {"head", "get", "post", "put", "patch", "delete", "options"}
+    HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
     SPECIFICATION_FILE = "__spec_file__"
     CONFIG = {
         "title": "OpenAPI Document",

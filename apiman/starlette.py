@@ -111,9 +111,7 @@ class Extension(OpenApi):
                                 )
                             elif route.methods:
                                 for method in route.methods:
-                                    if (
-                                        not method == "HEAD"
-                                    ):  # add by starlette in common
+                                    if method.lower() in self.HTTP_METHODS:
                                         self._load_specification(
                                             base_path + route.path,
                                             specification,
