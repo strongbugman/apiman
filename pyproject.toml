@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "apiman"
+version = "0.2.4"
+description = "Integrate api manual for your web project"
+license = "BSD"
+readme = "README.md"
+repository = "https://github.com/strongbugman/ant_nest"
+authors = ["strongbugman <strongbugman@gmail.com>"]
+classifiers=[
+    "Environment :: Console",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+packages = [
+    { include = "apiman" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.6.2"
+PyYAML = "^6.0"
+Jinja2 = "^3.0.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+pytest-cov = "^3.0.0"
+openapi-spec-validator = "^0.3.1"
+uvicorn = "^0.15.0"
+Flask = "^2.0.2"
+starlette = "^0.16.0"
+black = "^21.10b0"
+isort = "^5.10.0"
+flake8 = "^4.0.1"
+mypy = "^0.910"
+requests = "^2.26.0"
+types-PyYAML = "^6.0.0"
+codecov = "^2.1.12"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

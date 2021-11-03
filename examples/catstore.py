@@ -1,15 +1,14 @@
 """OpenAPI2(Swagger) with Starlette
 """
+from openapi_spec_validator import validate_v2_spec
 from starlette.applications import Starlette
+from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.endpoints import HTTPEndpoint
-from uvicorn import run
-from openapi_spec_validator import validate_v2_spec
 from starlette.testclient import TestClient
+from uvicorn import run
 
 from apiman.starlette import Extension
-
 
 app = Starlette()
 sub_app = Starlette()

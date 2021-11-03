@@ -1,13 +1,13 @@
+import os
 import typing
 
-from starlette.applications import Starlette
-from starlette.responses import Response, JSONResponse
-from starlette.requests import Request
-from starlette.routing import Mount, Route
 from jinja2 import Template
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
+from starlette.routing import Mount, Route
 
 from .openapi import OpenApi
-
 
 EndpointFunc = typing.Callable[
     [Request], typing.Union[Response, typing.Coroutine[None, None, Response]]
@@ -20,7 +20,13 @@ class Extension(OpenApi):
         decorators: typing.Sequence[
             typing.Callable[[EndpointFunc], EndpointFunc]
         ] = tuple(),
-        **config
+        title="OpenAPI Document",
+        specification_url="/apiman/specification/",
+        swagger_url="/apiman/swagger/",
+        redoc_url="/apiman/redoc/",
+        swagger_template=os.path.join(OpenApi.STATIC_DIR, "swagger.html"),
+        redoc_template=os.path.join(OpenApi.STATIC_DIR, "redoc.html"),
+        template=os.path.join(OpenApi.STATIC_DIR, "template.yml"),
     ):
         """Starlette extention
 
@@ -45,26 +51,30 @@ class Extension(OpenApi):
         ... def list_cats(req: Request):
         ...     return JSONResponse(list(CATS.values()))
         """
-        super().__init__(**config)
+        super().__init__(
+            title=title,
+            specification_url=specification_url,
+            swagger_url=swagger_url,
+            redoc_url=redoc_url,
+            swagger_template=swagger_template,
+            redoc_template=redoc_template,
+            template=template,
+        )
         self.decorators = decorators
 
     def init_app(self, app: Starlette):
-        if self.config["swagger_template"] and self.config["swagger_url"]:
-            swagger_html = Template(
-                open(self.config["swagger_template"]).read()
-            ).render(self.config)
-            self.route(
-                app, self.config["swagger_url"], lambda _: Response(swagger_html)
-            )
-        if self.config["redoc_template"] and self.config["redoc_url"]:
-            redoc_html = Template(open(self.config["redoc_template"]).read()).render(
+        if self.swagger_template and self.swagger_url:
+            swagger_html = Template(open(self.swagger_template).read()).render(
                 self.config
             )
-            self.route(app, self.config["redoc_url"], lambda _: Response(redoc_html))
-        if self.config["specification_url"]:
+            self.route(app, self.swagger_url, lambda _: Response(swagger_html))
+        if self.redoc_template and self.redoc_template:
+            redoc_html = Template(open(self.redoc_template).read()).render(self.config)
+            self.route(app, self.redoc_url, lambda _: Response(redoc_html))
+        if self.specification_url:
             self.route(
                 app,
-                self.config["specification_url"],
+                self.specification_url,
                 lambda _: JSONResponse(self.load_specification(app)),
             )
 

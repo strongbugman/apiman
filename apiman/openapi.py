@@ -1,32 +1,35 @@
+import json
+import os
 import typing
 from collections import defaultdict
-import json
 
 import yaml
-from yaml.scanner import ScannerError
 
 import apiman
-
-
-STATIC_DIR = f"{getattr(apiman, '__path__')[0]}/static/"
 
 
 class OpenApi:
     HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
     SPECIFICATION_FILE = "__spec_file__"
-    CONFIG = {
-        "title": "OpenAPI Document",
-        "specification_url": "/apiman/specification/",
-        "swagger_url": "/apiman/swagger/",
-        "redoc_url": "/apiman/redoc/",
-        "swagger_template": f"{STATIC_DIR}swagger.html",
-        "redoc_template": f"{STATIC_DIR}redoc.html",
-    }
+    STATIC_DIR = f"{getattr(apiman, '__path__')[0]}/static/"
 
-    def __init__(self, template=f"{STATIC_DIR}template.yml", **config):
+    def __init__(
+        self,
+        title="OpenAPI Document",
+        specification_url="/apiman/specification/",
+        swagger_url="/apiman/swagger/",
+        redoc_url="/apiman/redoc/",
+        swagger_template=os.path.join(STATIC_DIR, "swagger.html"),
+        redoc_template=os.path.join(STATIC_DIR, "redoc.html"),
+        template=os.path.join(STATIC_DIR, "template.yml"),
+    ):
+        self.title = title
+        self.specification_url = specification_url
+        self.swagger_url = swagger_url
+        self.redoc_url = redoc_url
+        self.swagger_template = swagger_template
+        self.redoc_template = redoc_template
         self.specification = self.load_file(template)
-        self.config = self.CONFIG.copy()
-        self.config.update(config)
         self.loaded = False
 
         if self.is_swagger:
@@ -39,10 +42,21 @@ class OpenApi:
             self.specification["paths"][k] = v
 
     @property
-    def is_swagger(self):
+    def config(self) -> typing.Dict[str, str]:
+        return {
+            "title": self.title,
+            "specification_url": self.specification_url,
+            "swagger_url": self.swagger_url,
+            "redoc_url": self.redoc_url,
+            "swagger_template": self.swagger_template,
+            "redoc_template": self.redoc_template,
+        }
+
+    @property
+    def is_swagger(self) -> bool:
         return "swagger" in self.specification
 
-    def add_schema(self, name: str, definition: typing.Dict):
+    def add_schema(self, name: str, definition: typing.Dict[str, typing.Any]):
         if self.is_swagger:
             self.specification["definitions"][name] = definition
         else:
@@ -55,20 +69,17 @@ class OpenApi:
 
         return decorator
 
-    def from_doc(self, func: typing.Callable) -> typing.Dict:
+    def from_doc(self, func: typing.Callable) -> typing.Dict[str, typing.Any]:
         if not func.__doc__:
             return {}
 
-        try:
-            spec = yaml.safe_load(func.__doc__.split("---")[-1])
-        except ScannerError:
-            return {}
+        spec = yaml.safe_load(func.__doc__.split("---")[-1])
         if not isinstance(spec, dict):
             return {}
 
         return spec
 
-    def from_func(self, func: typing.Callable) -> typing.Dict:
+    def from_func(self, func: typing.Callable) -> typing.Dict[str, typing.Any]:
         specification = self.from_doc(func)
         if not specification and hasattr(func, self.SPECIFICATION_FILE):
             specification = self.load_file(getattr(func, self.SPECIFICATION_FILE))

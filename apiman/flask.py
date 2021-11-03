@@ -1,6 +1,7 @@
+import os
 import typing
 
-from flask import Flask, jsonify, Response
+from flask import Flask, Response, jsonify
 from jinja2 import Template
 
 from .openapi import OpenApi
@@ -9,12 +10,16 @@ from .openapi import OpenApi
 class Extension(OpenApi):
     def __init__(
         self,
-        *args,
-        app: typing.Optional[Flask] = None,
         decorators: typing.Sequence[
             typing.Callable[[typing.Callable], typing.Callable]
         ] = tuple(),
-        **kwargs,
+        title="OpenAPI Document",
+        specification_url="/apiman/specification/",
+        swagger_url="/apiman/swagger/",
+        redoc_url="/apiman/redoc/",
+        swagger_template=os.path.join(OpenApi.STATIC_DIR, "swagger.html"),
+        redoc_template=os.path.join(OpenApi.STATIC_DIR, "redoc.html"),
+        template=os.path.join(OpenApi.STATIC_DIR, "template.yml"),
     ):
         """Flask extension
 
@@ -39,37 +44,39 @@ class Extension(OpenApi):
         ... def list_dogs():
         ...     return jsonify(list(DOGS.values()))
         """
-        super().__init__(*args, **kwargs)
-        self.app = app
+        super().__init__(
+            title=title,
+            specification_url=specification_url,
+            swagger_url=swagger_url,
+            redoc_url=redoc_url,
+            swagger_template=swagger_template,
+            redoc_template=redoc_template,
+            template=template,
+        )
         self.decorators = decorators
-        self.init_app(self.app) if self.app else None
 
     def init_app(self, app: Flask):
         app.extensions["apiman"] = self
 
         self.config.update(app.config.get_namespace("OPENAPI_", lowercase=True))
 
-        if self.config["swagger_template"] and self.config["swagger_url"]:
-            swagger_html = Template(
-                open(self.config["swagger_template"]).read()
-            ).render(self.config)
-            self.route(
-                app,
-                self.config["swagger_url"],
-                "swagger_ui",
-                lambda: Response(swagger_html),
-            )
-        if self.config["redoc_template"] and self.config["redoc_url"]:
-            redoc_html = Template(open(self.config["redoc_template"]).read()).render(
+        if self.swagger_template and self.swagger_url:
+            swagger_html = Template(open(self.swagger_template).read()).render(
                 self.config
             )
             self.route(
-                app, self.config["redoc_url"], "redoc_ui", lambda: Response(redoc_html)
+                app,
+                self.swagger_url,
+                "swagger_ui",
+                lambda: Response(swagger_html),
             )
-        if self.config["specification_url"]:
+        if self.redoc_template and self.redoc_template:
+            redoc_html = Template(open(self.redoc_template).read()).render(self.config)
+            self.route(app, self.redoc_url, "redoc_ui", lambda: Response(redoc_html))
+        if self.specification_url:
             self.route(
                 app,
-                self.config["specification_url"],
+                self.specification_url,
                 "openapi_specification",
                 lambda: jsonify(self.load_specification(app)),
             )
@@ -80,11 +87,11 @@ class Extension(OpenApi):
                 func = app.view_functions[route.endpoint]
                 if hasattr(func, "view_class"):  # view class
                     # from class
-                    specification = self.from_func(func.view_class)
+                    specification = self.from_func(func.view_class)  # type: ignore
                     self._load_specification(route.rule, specification)
                     # from class methods
-                    for method in route.methods:
-                        _func = getattr(func.view_class, method.lower(), None)
+                    for method in route.methods:  # type: ignore
+                        _func = getattr(func.view_class, method.lower(), None)  # type: ignore
                         if _func:
                             specification = self.from_func(_func)
                             if specification:
@@ -100,7 +107,7 @@ class Extension(OpenApi):
                     ):  # multi method description
                         self._load_specification(route.rule, specification)
                     else:
-                        for method in route.methods:
+                        for method in route.methods:  # type: ignore
                             if method.lower() in self.HTTP_METHODS:
                                 self._load_specification(
                                     route.rule, specification, method=method

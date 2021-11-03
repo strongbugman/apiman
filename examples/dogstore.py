@@ -1,11 +1,10 @@
 """OpenAPI3 with flask
 """
-from flask import Flask, jsonify, request, Response
+from flask import Flask, Response, jsonify, request
 from flask.views import MethodView
 from openapi_spec_validator import validate_v3_spec
 
 from apiman.flask import Extension
-
 
 app = Flask(__name__)
 openapi = Extension(

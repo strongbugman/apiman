@@ -3,8 +3,9 @@ language: python
 python:
 - '3.6'
 - '3.7'
-install:
-- pip install codecov black flake8 mypy
+- '3.8'
+- '3.9'
+- '3.10'
 script: make test
 after_success:
 - codecov
