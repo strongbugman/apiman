@@ -19,7 +19,7 @@ class Extension(OpenApi):
         redoc_url="/apiman/redoc/",
         swagger_template=os.path.join(OpenApi.STATIC_DIR, "swagger.html"),
         redoc_template=os.path.join(OpenApi.STATIC_DIR, "redoc.html"),
-        template=os.path.join(OpenApi.STATIC_DIR, "template.yml"),
+        template=os.path.join(OpenApi.STATIC_DIR, "template.yaml"),
     ):
         """Flask extension
 

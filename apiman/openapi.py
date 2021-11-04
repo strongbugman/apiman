@@ -21,7 +21,7 @@ class OpenApi:
         redoc_url="/apiman/redoc/",
         swagger_template=os.path.join(STATIC_DIR, "swagger.html"),
         redoc_template=os.path.join(STATIC_DIR, "redoc.html"),
-        template=os.path.join(STATIC_DIR, "template.yml"),
+        template=os.path.join(STATIC_DIR, "template.yaml"),
     ):
         self.title = title
         self.specification_url = specification_url
