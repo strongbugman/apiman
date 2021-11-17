@@ -1,5 +1,6 @@
 """OpenAPI2(Swagger) with Starlette
 """
+import pytest
 from openapi_spec_validator import validate_v2_spec
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
@@ -49,8 +50,16 @@ class Cat(HTTPEndpoint):
       - cat
       parameters:
       - name: id
-        type: integer
+        type: string
         in: path
+        required: True
+      - name: test_param1
+        type: string
+        in: header
+        required: True
+      - name: test_param2
+        type: string
+        in: query
         required: True
       responses:
         "200":
@@ -62,6 +71,7 @@ class Cat(HTTPEndpoint):
     """
 
     def get(self, req: Request):
+        openapi.validate_request(req)
         return JSONResponse(CATS[int(req.path_params["id"])])
 
     def delete(self, req: Request):
@@ -98,6 +108,8 @@ def list_cats(req: Request):
 @sub_app.route("/cats/", methods=["POST"])
 @openapi.from_file("./examples/docs/cats_post.json")
 async def create_cat(req: Request):
+    await req.json()
+    openapi.validate_request(req)
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
@@ -113,6 +125,24 @@ def test_app():
     assert client.get(openapi.config["specification_url"]).json() == spec
     assert client.get(openapi.config["swagger_url"]).status_code == 200
     assert client.get(openapi.config["redoc_url"]).status_code == 200
+    # --
+    with pytest.raises(Exception):
+        client.get("/cat/1/")
+    with pytest.raises(Exception):
+        client.get("/cat/1/?test_param2=test")
+    assert (
+        client.get(
+            "/cat/1/?test_param2=test", headers={"test_param1": "test"}
+        ).status_code
+        == 200
+    )
+    # --
+    with pytest.raises(Exception):
+        client.post("/cats/", json={"name": "test", "id": 3})
+    assert (
+        client.post("/cats/", json={"name": "test", "id": 3, "age": 4}).status_code
+        == 200
+    )
 
 
 if __name__ == "__main__":

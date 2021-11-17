@@ -77,6 +77,31 @@ class Extension(OpenApi):
                 self.specification_url,
                 lambda _: JSONResponse(self.load_specification(app)),
             )
+        self.router = app.router
+
+    def _get_request_schema(self, request: Request) -> typing.Dict:
+        # get regex path, eg: "/api/cats/{id}/"
+        path = ""
+        for r in self.router.routes:
+            scope = r.matches(request.scope)[1]
+            if scope:
+                path = getattr(r, "path", "") or scope.get("path", "")
+                break
+        return self.get_path(path, request.method.lower())
+
+    def _get_request_data(self, request: Request, k: str) -> typing.Dict:
+        if k == "query":
+            return request.query_params._dict
+        elif k == "path":
+            return request.path_params
+        elif k == "cookie":
+            return request.cookies
+        elif k == "header":
+            return dict(request.headers)
+        elif k == "json":
+            return request._json
+        else:
+            return {}
 
     def load_specification(
         self, app: Starlette, mount: typing.Optional[Mount] = None, base_path=""
@@ -94,35 +119,31 @@ class Extension(OpenApi):
 
                     if isinstance(route.endpoint, type):  # for endpoint class
                         # load from endpoint class
-                        specification = self.from_func(route.endpoint)
+                        specification = self.parse(route.endpoint)
                         if specification:
-                            self._load_specification(
-                                base_path + route.path, specification
-                            )
+                            self.add_path(base_path + route.path, specification)
                         # load from single method
                         for method in self.HTTP_METHODS:
                             func = getattr(route.endpoint, method, None)
                             if func:
-                                specification = self.from_func(func)
+                                specification = self.parse(func)
                                 if specification:
-                                    self._load_specification(
+                                    self.add_path(
                                         base_path + route.path,
                                         specification,
                                         method=method,
                                     )
                     else:  # for endpoint function
-                        specification = self.from_func(route.endpoint)
+                        specification = self.parse(route.endpoint)
                         if specification:
                             if (
                                 set(specification.keys()) & self.HTTP_METHODS
                             ):  # multi method description
-                                self._load_specification(
-                                    base_path + route.path, specification
-                                )
+                                self.add_path(base_path + route.path, specification)
                             elif route.methods:
                                 for method in route.methods:
                                     if method.lower() in self.HTTP_METHODS:
-                                        self._load_specification(
+                                        self.add_path(
                                             base_path + route.path,
                                             specification,
                                             method=method,

@@ -1,5 +1,6 @@
 """OpenAPI3 with flask
 """
+import pytest
 from flask import Flask, Response, jsonify, request
 from flask.views import MethodView
 from openapi_spec_validator import validate_v3_spec
@@ -24,6 +25,7 @@ openapi.add_schema(
             "age": {"type": "integer"},
         },
         "type": "object",
+        "required": ["id", "name", "age"],
     },
 )
 
@@ -40,9 +42,19 @@ class DogView(MethodView):
       parameters:
       - name: id
         in: path
-        required: True
+        required: true
         schema:
           type: integer
+      - name: test_param1
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: Test-Param2
+        in: header
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -58,6 +70,7 @@ class DogView(MethodView):
         """
         Normal annotation will be ignored
         """
+        openapi.validate_request(request)
         return jsonify(DOGS[id])
 
     def delete(self, id):
@@ -96,7 +109,8 @@ def list_dogs():
 @app.route("/dogs/", methods=["POST"])
 @openapi.from_file("./examples/docs/dogs_post.json")
 def create_dog():
-    dog = request.json()
+    openapi.validate_request(request)
+    dog = request.json
     DOGS[dog["id"]] = dog
     return jsonify(dog)
 
@@ -108,6 +122,23 @@ def test_app():
     assert client.get(openapi.config["specification_url"]).json == spec
     assert client.get(openapi.config["swagger_url"]).status_code == 200
     assert client.get(openapi.config["redoc_url"]).status_code == 200
+    # --
+    with pytest.raises(Exception):
+        assert client.get("/dog/1") == 200
+    with pytest.raises(Exception):
+        assert client.get("/dog/1?test_param1=test") == 200
+    assert (
+        client.get(
+            "/dog/1?test_param1=test", headers={"test_param2": "test"}
+        ).status_code
+        == 200
+    )
+    with pytest.raises(Exception):
+        assert client.post("/dogs/", json={"id": 1, "name": "doge"}).status_code == 200
+    assert (
+        client.post("/dogs/", json={"id": 1, "name": "doge", "age": 3}).status_code
+        == 200
+    )
 
 
 if __name__ == "__main__":

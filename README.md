@@ -9,6 +9,7 @@ APIMAN provide a easy way to integrate api manual/document for your web project
 
 * Support OpenAPI 2 and 3 specification, define API specification by file or doc
 * Provide configurable [SwaggerUI](http://swagger.io/swagger-ui/) and [RedocUI](https://rebilly.github.io/ReDoc/)
+* Request validation
 * Outbox extension for flask and Starlette
 
 ## Install
@@ -71,8 +72,12 @@ class Cat(HTTPEndpoint):
       - cat
       parameters:
       - name: id
-        type: integer
+        type: string
         in: path
+        required: True
+      - name: x-client-version
+        type: string
+        in: header
         required: True
       responses:
         "200":
@@ -84,6 +89,8 @@ class Cat(HTTPEndpoint):
     """
 
     def get(self, req: Request):
+        # validate params in path query header and cookie by schema (only support string type)
+        openapi.validate_request(req)
         return JSONResponse(CATS[int(req.path_params["id"])])
 
     def delete(self, req: Request):
@@ -120,6 +127,9 @@ def list_cats(req: Request):
 @app.route("/cats/", methods=["POST"])
 @openapi.from_file("./examples/docs/cats_post.json")
 async def list_cats(req: Request):
+    await req.json()
+    # validate json body
+    openapi.validate_request(req)
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
@@ -129,7 +139,7 @@ if __name__ == "__main__":
     run(app)
 ```
 
-Then we can get swagger web page at [http://localhost:8000/apiman/swagger/](http://localhost:8000/apiman/swagger/):
+Then we get swagger web page at [http://localhost:8000/apiman/swagger/](http://localhost:8000/apiman/swagger/):
 ![WebPage](docs/SwaggerUI.jpg)
 
 See **examples/** for more examples
@@ -137,4 +147,4 @@ See **examples/** for more examples
 ## How it works
 
 * Provide a base class("OpenApi") to handle api specification's collection
-* Provide extentions to extract api specification and register http endpoints to show UI web page and specification
+* Provide extentions to extract api specification and register http endpoints to show UI web page and specification 

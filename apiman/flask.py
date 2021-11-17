@@ -1,7 +1,7 @@
 import os
 import typing
 
-from flask import Flask, Response, jsonify
+from flask import Flask, Request, Response, jsonify
 from jinja2 import Template
 
 from .openapi import OpenApi
@@ -81,37 +81,54 @@ class Extension(OpenApi):
                 lambda: jsonify(self.load_specification(app)),
             )
 
+    def _get_request_schema(self, request: Request) -> typing.Dict:
+        if request.url_rule:
+            path = self._covert_path_rule(request.url_rule.rule)
+        else:
+            path = request.path
+        return self.get_path(path, request.method.lower())
+
+    def _get_request_data(self, request: Request, k: str) -> typing.Dict:
+        if k == "query":
+            return dict(request.args)
+        elif k == "path":
+            return request.view_args or {}
+        elif k == "cookie":
+            return dict(request.cookies)
+        elif k == "header":
+            return dict(request.headers.items())
+        elif k == "json":
+            return request.json  # type: ignore
+        else:
+            return {}
+
     def load_specification(self, app: Flask) -> typing.Dict:
         if not self.loaded:
             for route in app.url_map.iter_rules():
                 func = app.view_functions[route.endpoint]
                 if hasattr(func, "view_class"):  # view class
                     # from class
-                    specification = self.from_func(func.view_class)  # type: ignore
-                    self._load_specification(route.rule, specification)
+                    specification = self.parse(func.view_class)  # type: ignore
+                    self.add_path(route.rule, specification)
                     # from class methods
                     for method in route.methods:  # type: ignore
                         _func = getattr(func.view_class, method.lower(), None)  # type: ignore
                         if _func:
-                            specification = self.from_func(_func)
+                            specification = self.parse(_func)
                             if specification:
-                                self._load_specification(
-                                    route.rule, specification, method=method
-                                )
+                                self.add_path(route.rule, specification, method=method)
                 else:  # view function
-                    specification = self.from_func(func)
+                    specification = self.parse(func)
                     if not specification:
                         continue
                     if (
                         set(specification.keys()) & self.HTTP_METHODS
                     ):  # multi method description
-                        self._load_specification(route.rule, specification)
+                        self.add_path(route.rule, specification)
                     else:
                         for method in route.methods:  # type: ignore
                             if method.lower() in self.HTTP_METHODS:
-                                self._load_specification(
-                                    route.rule, specification, method=method
-                                )
+                                self.add_path(route.rule, specification, method=method)
             self.loaded = True
             return self.specification
         else:
@@ -122,9 +139,14 @@ class Extension(OpenApi):
             func = decorator(func)
         app.route(url, endpoint=endpoint, methods=["GET"])(func)
 
-    def _load_specification(
+    def add_path(
         self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
     ):
+        return super().add_path(
+            self._covert_path_rule(path), specification, method=method
+        )
+
+    def _covert_path_rule(self, path: str) -> str:
         # covert flask variable rules, eg "/path/<int:id>" to "/path/{id}"
         _subs = []
         for _sub in path.split("/"):
@@ -133,6 +155,4 @@ class Extension(OpenApi):
             else:
                 _subs.append(_sub)
 
-        return super()._load_specification(
-            "/".join(_subs), specification, method=method
-        )
+        return "/".join(_subs)

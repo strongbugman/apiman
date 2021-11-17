@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "apiman"
-version = "0.2.5"
+version = "0.3.0"
 description = "Integrate api manual for your web project"
 license = "BSD"
 readme = "README.md"
@@ -10,6 +10,8 @@ classifiers=[
     "Environment :: Console",
     "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -22,6 +24,7 @@ packages = [
 python = "^3.6.2"
 PyYAML = "^6.0"
 Jinja2 = "^3.0.2"
+jsonschema-rs = "^0.13.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
