@@ -99,7 +99,7 @@ class Extension(OpenApi):
         elif k == "header":
             return dict(request.headers)
         elif k == "json":
-            return request._json
+            return getattr(request, "_json", {})
         else:
             return {}
 
