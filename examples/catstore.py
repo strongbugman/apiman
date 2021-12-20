@@ -25,13 +25,14 @@ CATS = {
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
 # add schema definition
+openapi.add_schema("cat_age", {"type": "integer", "minimum": 0, "maximum": 3000})
 openapi.add_schema(
     "Cat",
     {
         "properties": {
             "id": {"description": "global unique", "type": "integer"},
             "name": {"type": "string"},
-            "age": {"type": "integer"},
+            "age": {"$ref": "#/definitions/cat_age"},
         },
         "type": "object",
     },

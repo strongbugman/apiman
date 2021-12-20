@@ -150,7 +150,7 @@ class Extension(OpenApi):
                                         )
 
             self.loaded = True
-            return self.specification
+            return super().load_specification(app)
         else:
             return self.specification
 

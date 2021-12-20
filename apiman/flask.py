@@ -130,7 +130,7 @@ class Extension(OpenApi):
                             if method.lower() in self.HTTP_METHODS:
                                 self.add_path(route.rule, specification, method=method)
             self.loaded = True
-            return self.specification
+            return super().load_specification(app)
         else:
             return self.specification
 

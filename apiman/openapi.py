@@ -52,6 +52,33 @@ class OpenApi:
         assert _version, "Wrong API specification format"
         return tuple(map(int, _version.split(".")))
 
+    def load_specification(self, app: typing.Any) -> typing.Dict:
+        self.specification = self.expande(self.specification)
+        return self.specification
+
+    def get_by_ref(self, ref: str) -> typing.Any:
+        data = self.specification
+        for k in ref.split("/"):
+            if k == "#":
+                continue
+            elif k not in data:
+                raise ValueError(f"Wrong ref: {ref}")
+            data = data[k]
+
+        return data
+
+    def expande(self, obj: typing.Any) -> typing.Any:
+        if isinstance(obj, dict) and "$ref" in obj:
+            return self.get_by_ref(obj["$ref"])
+        else:
+            if isinstance(obj, list):
+                for i, o in enumerate(obj):
+                    obj[i] = self.expande(o)
+            elif isinstance(obj, dict):
+                for i, o in obj.items():
+                    obj[i] = self.expande(o)
+            return obj
+
     def add_schema(self, name: str, definition: typing.Dict[str, typing.Any]):
         if self.version[0] > 2:
             if "components" not in self.specification:
@@ -63,16 +90,6 @@ class OpenApi:
             if "definitions" not in self.specification:
                 self.specification["definitions"] = {}
             self.specification["definitions"][name] = definition
-
-    def get_schema(self, ref: str) -> typing.Dict[str, typing.Any]:
-        try:
-            if self.version[0] > 2:
-                *_, index, name = ref.split("/")
-                return self.specification["components"][index][name]
-            else:
-                return self.specification["definitions"][ref.split("/")[-1]]
-        except (KeyError, IndexError):
-            return {}
 
     def add_path(
         self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
@@ -112,8 +129,6 @@ class OpenApi:
         path_schema = copy.deepcopy(base_schema)
         cookie_schema = copy.deepcopy(base_schema)
         for d in self.specification["paths"][path][method].get("parameters", []):
-            if "$ref" in d:
-                d = self.get_schema(d["$ref"])
             if d.get("in") == "query":
                 _schema = query_schema
             elif d.get("in") == "header":
@@ -123,22 +138,14 @@ class OpenApi:
             elif d.get("in") == "cookie":
                 _schema = cookie_schema
             elif self.version[0] <= 2 and d.get("in") == "body" and "schema" in d:
-                schema["json"] = (
-                    d["schema"]
-                    if "$ref" not in d["schema"]
-                    else self.get_schema(d["schema"]["$ref"])
-                )
+                schema["json"] = d["schema"]
                 continue
             else:
                 continue
             if self.version[0] > 2:
                 if "schema" not in d:
                     continue
-                _schema["properties"][d["name"]] = (
-                    d["schema"]
-                    if "$ref" not in d["schema"]
-                    else self.get_schema(d["schema"]["$ref"])
-                )
+                _schema["properties"][d["name"]] = d["schema"]
             else:
                 if "type" not in d:
                     continue
@@ -159,11 +166,7 @@ class OpenApi:
                 d = self.specification["paths"][path][method]["requestBody"]["content"][
                     "application/json"
                 ]
-                schema["json"] = (
-                    d["schema"]
-                    if "$ref" not in d["schema"]
-                    else self.get_schema(d["schema"]["$ref"])
-                )
+                schema["json"] = d["schema"]
             except KeyError:
                 pass
 
