@@ -12,6 +12,8 @@ import apiman
 class OpenApi:
     HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
     SPECIFICATION_FILE = "__spec_file__"
+    SPECIFICATION_YAML = "__spec_yaml__"
+    SPECIFICATION_DICT = "__spec_dict__"
     STATIC_DIR = f"{getattr(apiman, '__path__')[0]}/static/"
 
     def __init__(
@@ -192,17 +194,36 @@ class OpenApi:
 
         return decorator
 
+    def from_yaml(self, content: str) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:
+            setattr(func, self.SPECIFICATION_YAML, content)
+            return func
+
+        return decorator
+
+    def from_dict(self, content: typing.Dict) -> typing.Callable:
+        def decorator(func: typing.Callable) -> typing.Callable:
+            setattr(func, self.SPECIFICATION_DICT, content)
+            return func
+
+        return decorator
+
     def parse(self, func: typing.Callable) -> typing.Dict[str, typing.Any]:
-        # doc-string
         specification = {}
         if func.__doc__:
             specification = yaml.safe_load(func.__doc__.split("---")[-1])
             if not isinstance(specification, dict):
                 specification = {}
-        # file
-        if not specification and hasattr(func, self.SPECIFICATION_FILE):
-            specification = self.load_file(getattr(func, self.SPECIFICATION_FILE))
-        return specification
+        if specification:
+            return specification
+        elif hasattr(func, self.SPECIFICATION_YAML):
+            return yaml.safe_load(getattr(func, self.SPECIFICATION_YAML))
+        elif hasattr(func, self.SPECIFICATION_DICT):
+            return getattr(func, self.SPECIFICATION_DICT)
+        elif hasattr(func, self.SPECIFICATION_FILE):
+            return self.load_file(getattr(func, self.SPECIFICATION_FILE))
+        else:
+            return specification
 
     @staticmethod
     def load_file(file_path: str) -> typing.Dict:

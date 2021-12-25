@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "apiman"
-version = "0.3.1"
+version = "0.3.2"
 description = "Integrate api manual for your web project"
 license = "BSD"
 readme = "README.md"

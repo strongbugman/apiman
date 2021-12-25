@@ -31,41 +31,57 @@ openapi.add_schema(
 
 
 # define routes and schema(in doc string)
+@openapi.from_dict(
+    {
+        "get": {
+            "parameters": [
+                {
+                    "in": "path",
+                    "name": "id",
+                    "required": True,
+                    "schema": {"type": "integer"},
+                },
+                {
+                    "in": "query",
+                    "name": "test_param1",
+                    "required": True,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "in": "header",
+                    "name": "Test-Param2",
+                    "required": True,
+                    "schema": {"type": "string"},
+                },
+            ],
+            "responses": {
+                "200": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "age": {"type": "integer"},
+                                    "id": {
+                                        "description": "global unique",
+                                        "type": "integer",
+                                    },
+                                    "name": {"type": "string"},
+                                },
+                                "required": ["id", "name", "age"],
+                                "type": "object",
+                            }
+                        }
+                    },
+                    "description": "OK",
+                },
+                "404": {"description": "Not found"},
+            },
+            "summary": "Get single dog",
+            "tags": ["dog"],
+        }
+    }
+)
 class DogView(MethodView):
-    """
-    Declare multi method
-    ---
-    get:
-      summary: Get single dog
-      tags:
-      - dog
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-      - name: test_param1
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: Test-Param2
-        in: header
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Dog'
-        "404":
-          description: Not found
-    """
-
     def get(self, id):
         """
         Normal annotation will be ignored
@@ -73,10 +89,8 @@ class DogView(MethodView):
         openapi.validate_request(request)
         return jsonify(DOGS[id])
 
-    def delete(self, id):
+    @openapi.from_yaml(
         """
-        Declare single method
-        ---
         summary: Delete single dog
         tags:
         - dog
@@ -92,6 +106,8 @@ class DogView(MethodView):
           "404":
             description: Not found
         """
+    )
+    def delete(self, id):
         DOGS.pop(id)
         return Response(status=204)
 
