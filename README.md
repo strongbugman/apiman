@@ -1,6 +1,6 @@
 # APIMAN
 
-[![Build](https://travis-ci.com/strongbugman/apiman.svg?branch=master)](https://travis-ci.com/strongbugman/apiman)
+[![Build](https://github.com/strongbugman/apiman/workflows/test/badge.svg)](https://github.com/strongbugman/apiman/actions)
 [![codecov](https://codecov.io/gh/strongbugman/apiman/branch/master/graph/badge.svg)](https://codecov.io/gh/strongbugman/apiman)
 
 APIMAN provide a easy way to integrate api manual/document for your web project
