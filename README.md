@@ -390,4 +390,4 @@ See **examples/** for more examples
 ## How it works
 
 * Provide a base class("OpenApi") to handle api specification's collection
-* Provide extentions to extract api specification and register http endpoints to show UI web page and specification 
+* Provide extensions to extract api specification and register http endpoints to show UI web page and specification 
