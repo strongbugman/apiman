@@ -58,8 +58,6 @@ class Extension(OpenApi):
     def init_app(self, app: Flask):
         app.extensions["apiman"] = self
 
-        self.config.update(app.config.get_namespace("OPENAPI_", lowercase=True))
-
         if self.swagger_template and self.swagger_url:
             swagger_html = Template(open(self.swagger_template).read()).render(
                 self.config

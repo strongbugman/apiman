@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "apiman"
-version = "0.3.3"
+version = "0.4.0"
 description = "Integrate api manual for your web project"
 license = "BSD"
 readme = "README.md"
@@ -40,6 +40,7 @@ mypy = "^0.910"
 requests = "^2.26.0"
 types-PyYAML = "^6.0.0"
 codecov = "^2.1.12"
+Django = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

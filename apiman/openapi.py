@@ -55,7 +55,7 @@ class OpenApi:
         return tuple(map(int, _version.split(".")))
 
     def load_specification(self, app: typing.Any) -> typing.Dict:
-        self.specification = self.expande(self.specification)
+        self.specification = self.expand(self.specification)
         return self.specification
 
     def get_by_ref(self, ref: str) -> typing.Any:
@@ -69,16 +69,16 @@ class OpenApi:
 
         return data
 
-    def expande(self, obj: typing.Any) -> typing.Any:
+    def expand(self, obj: typing.Any) -> typing.Any:
         if isinstance(obj, dict) and "$ref" in obj:
             return self.get_by_ref(obj["$ref"])
         else:
             if isinstance(obj, list):
                 for i, o in enumerate(obj):
-                    obj[i] = self.expande(o)
+                    obj[i] = self.expand(o)
             elif isinstance(obj, dict):
                 for i, o in obj.items():
-                    obj[i] = self.expande(o)
+                    obj[i] = self.expand(o)
             return obj
 
     def add_schema(self, name: str, definition: typing.Dict[str, typing.Any]):
