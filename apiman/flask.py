@@ -79,14 +79,14 @@ class Extension(OpenApi):
                 lambda: jsonify(self.load_specification(app)),
             )
 
-    def _get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> typing.Dict:
         if request.url_rule:
             path = self._covert_path_rule(request.url_rule.rule)
         else:
             path = request.path
-        return self.get_path(path, request.method.lower())
+        return self._get_request_schema(path, request.method.lower())
 
-    def _get_request_data(self, request: Request, k: str) -> typing.Dict:
+    def get_request_data(self, request: Request, k: str) -> typing.Dict:
         if k == "query":
             return dict(request.args)
         elif k == "path":

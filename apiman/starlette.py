@@ -79,7 +79,7 @@ class Extension(OpenApi):
             )
         self.router = app.router
 
-    def _get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> typing.Dict:
         # get regex path, eg: "/api/cats/{id}/"
         path = ""
         for r in self.router.routes:
@@ -87,9 +87,9 @@ class Extension(OpenApi):
             if scope:
                 path = getattr(r, "path", "") or scope.get("path", "")
                 break
-        return self.get_path(path, request.method.lower())
+        return self._get_request_schema(path, request.method.lower())
 
-    def _get_request_data(self, request: Request, k: str) -> typing.Dict:
+    def get_request_data(self, request: Request, k: str) -> typing.Dict:
         if k == "query":
             return request.query_params._dict
         elif k == "path":

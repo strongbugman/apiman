@@ -97,13 +97,13 @@ class Extension(OpenApi):
                 lambda: JsonResponse(self.load_specification(None)),
             )
 
-    def _get_request_schema(self, request: HttpRequest) -> typing.Dict:
-        return self.get_path(
+    def get_request_schema(self, request: HttpRequest) -> typing.Dict:
+        return self._get_request_schema(
             "/" + self._covert_path_rule(request.resolver_match.route),
             request.method.lower(),
         )
 
-    def _get_request_data(self, request: HttpRequest, k: str) -> typing.Dict:
+    def get_request_data(self, request: HttpRequest, k: str) -> typing.Dict:
         if k == "query":
             return dict(request.GET.items())
         elif k == "path":
