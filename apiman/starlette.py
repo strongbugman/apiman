@@ -87,9 +87,9 @@ class Extension(OpenApi):
             if scope:
                 path = getattr(r, "path", "") or scope.get("path", "")
                 break
-        return self._get_request_schema(path, request.method.lower())
+        return self._get_path_schema(path, request.method.lower())
 
-    def get_request_data(self, request: Request, k: str) -> typing.Dict:
+    def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
             return request.query_params._dict
         elif k == "path":

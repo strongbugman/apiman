@@ -98,12 +98,12 @@ class Extension(OpenApi):
             )
 
     def get_request_schema(self, request: HttpRequest) -> typing.Dict:
-        return self._get_request_schema(
+        return self._get_path_schema(
             "/" + self._covert_path_rule(request.resolver_match.route),
             request.method.lower(),
         )
 
-    def get_request_data(self, request: HttpRequest, k: str) -> typing.Dict:
+    def get_request_data(self, request: HttpRequest, k: str) -> typing.Any:
         if k == "query":
             return dict(request.GET.items())
         elif k == "path":
@@ -133,7 +133,7 @@ class Extension(OpenApi):
                 specification = self.parse(func.view_class)  # type: ignore
                 self.add_path(path, specification)
                 # from class methods
-                for method in ("get", "post", "patch", "put", "delete"):
+                for method in self.HTTP_METHODS:
                     _func = getattr(func.view_class, method, None)  # type: ignore
                     if _func:
                         specification = self.parse(_func)

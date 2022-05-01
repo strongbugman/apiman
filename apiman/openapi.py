@@ -106,7 +106,7 @@ class OpenApi:
         else:
             self.specification["paths"][path] = specification
 
-    def _get_request_schema(self, path: str, method: str):
+    def _get_path_schema(self, path: str, method: str):
         schema: typing.Dict[str, typing.Dict[str, typing.Any]] = {
             "query": {},
             "json": {},
@@ -174,7 +174,7 @@ class OpenApi:
 
         return schema
 
-    def get_request_data(self, request: typing.Any, k: str) -> typing.Dict:
+    def get_request_data(self, request: typing.Any, k: str) -> typing.Any:
         pass
 
     def get_request_schema(self, request: typing.Any) -> typing.Dict:
