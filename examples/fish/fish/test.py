@@ -1,9 +1,10 @@
 import json
 
-from apiman.django import openapi
 from django.test import TestCase
 from jsonschema_rs import ValidationError
 from openapi_spec_validator import validate_v3_spec
+
+from apiman.django import openapi
 
 
 class MyTestCase(TestCase):

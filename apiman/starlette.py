@@ -63,6 +63,8 @@ class Extension(OpenApi):
         self.decorators = decorators
 
     def init_app(self, app: Starlette):
+        app.on_event("startup")(lambda: self.load_specification(app))
+
         if self.swagger_template and self.swagger_url:
             swagger_html = Template(open(self.swagger_template).read()).render(
                 self.config

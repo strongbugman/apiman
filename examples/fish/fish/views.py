@@ -1,8 +1,9 @@
 import json
 
-from apiman.django import openapi
 from django.http import HttpResponse, JsonResponse
 from django.views import View
+
+from apiman.django import openapi
 
 fishes = {
     1: {
