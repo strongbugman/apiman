@@ -41,6 +41,8 @@ requests = "^2.26.0"
 types-PyYAML = "^6.0.0"
 codecov = "^2.1.12"
 Django = "^3.0.0"
+bottle = "^0.12.0"
+WebTest = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
