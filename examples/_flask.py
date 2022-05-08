@@ -5,18 +5,16 @@ from flask import Flask, Response, jsonify, request
 from flask.views import MethodView
 from openapi_spec_validator import validate_v3_spec
 
-from apiman.flask import Extension
+from apiman.flask import Apiman
 
 app = Flask(__name__)
-openapi = Extension(
-    template="./examples/docs/dog_template.yml", decorators=(lambda f: f,)
-)
-openapi.init_app(app)
+apiman = Apiman(template="./examples/docs/dog_template.yml")
+apiman.init_app(app)
 
 # define data
 DOGS = {1: {"id": 1, "name": "Ping", "age": 2}, 2: {"id": 2, "name": "Pong", "age": 1}}
 # add schema
-openapi.add_schema(
+apiman.add_schema(
     "Dog",
     {
         "properties": {
@@ -31,7 +29,7 @@ openapi.add_schema(
 
 
 # define routes and schema(in doc string)
-@openapi.from_dict(
+@apiman.from_dict(
     {
         "get": {
             "parameters": [
@@ -86,10 +84,10 @@ class DogView(MethodView):
         """
         Normal annotation will be ignored
         """
-        openapi.validate_request(request)
+        apiman.validate_request(request)
         return jsonify(DOGS[id])
 
-    @openapi.from_yaml(
+    @apiman.from_yaml(
         """
         summary: Delete single dog
         tags:
@@ -117,15 +115,15 @@ app.add_url_rule("/dog/<int:id>", view_func=DogView.as_view(name="dog"))
 
 # define doc by yaml or json file
 @app.route("/dogs/", methods=["GET"])
-@openapi.from_file("./examples/docs/dogs_get.yml")
+@apiman.from_file("./examples/docs/dogs_get.yml")
 def list_dogs():
     return jsonify(list(DOGS.values()))
 
 
 @app.route("/dogs/", methods=["POST"])
-@openapi.from_file("./examples/docs/dogs_post.json")
+@apiman.from_file("./examples/docs/dogs_post.json")
 def create_dog():
-    openapi.validate_request(request)
+    apiman.validate_request(request)
     dog = request.json
     DOGS[dog["id"]] = dog
     return jsonify(dog)
@@ -133,11 +131,11 @@ def create_dog():
 
 def test_app():
     client = app.test_client()
-    spec = openapi.load_specification(app)
+    spec = apiman.load_specification(app)
     validate_v3_spec(spec)
-    assert client.get(openapi.config["specification_url"]).json == spec
-    assert client.get(openapi.config["swagger_url"]).status_code == 200
-    assert client.get(openapi.config["redoc_url"]).status_code == 200
+    assert client.get(apiman.config["specification_url"]).json == spec
+    assert client.get(apiman.config["swagger_url"]).status_code == 200
+    assert client.get(apiman.config["redoc_url"]).status_code == 200
     # --
     with pytest.raises(Exception):
         assert client.get("/dog/1") == 200

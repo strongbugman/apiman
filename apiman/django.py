@@ -8,52 +8,50 @@ from django.http.response import HttpResponse, JsonResponse
 from django.urls import get_resolver
 from jinja2 import Template
 
-from .openapi import OpenApi
+from .base import Apiman as _Apiman
 
 
-class Extension(OpenApi):
+class Apiman(_Apiman):
+    """Django extension
+
+    Set middleware in settings.py:
+    >>> MIDDLEWARE = [
+    ...     ...
+    ...     "apiman.django.Middleware",
+    ... ]
+    Set config in settings.py:
+    >>> APIMAN_TITLE = "OpenAPI Document"
+    ... APIMNA_SPECIFICATION_URL="/apiman/specification/"
+    ...
+
+    Then in views:
+    >>> from apiman.django import apiman
+    >>> apiman.add_schema(
+    ...     "Dog",
+    ...     {
+    ...         "properties": {
+    ...             "id": {"description": "global unique", "type": "integer"},
+    ...             "name": {"type": "string"},
+    ...             "age": {"type": "integer"},
+    ...         },
+    ...         "type": "object",
+    ...     },
+    ... )
+    >>> @apiman.from_file("./examples/docs/dogs_get.yml")
+    ... def list_dogs(req):
+    ...     return JsonRespons(list(DOGS.values()))
+    """
+
     def __init__(
         self,
-        decorators: typing.Sequence[
-            typing.Callable[[typing.Callable], typing.Callable]
-        ] = tuple(),
         title="OpenAPI Document",
         specification_url="/apiman/specification/",
         swagger_url="/apiman/swagger/",
         redoc_url="/apiman/redoc/",
-        swagger_template=os.path.join(OpenApi.STATIC_DIR, "swagger.html"),
-        redoc_template=os.path.join(OpenApi.STATIC_DIR, "redoc.html"),
-        template=os.path.join(OpenApi.STATIC_DIR, "template.yaml"),
+        swagger_template=os.path.join(_Apiman.STATIC_DIR, "swagger.html"),
+        redoc_template=os.path.join(_Apiman.STATIC_DIR, "redoc.html"),
+        template=os.path.join(_Apiman.STATIC_DIR, "template.yaml"),
     ):
-        """Django extension
-
-        Set middleware in settings.py:
-        >>> MIDDLEWARE = [
-        ...     ...
-        ...     "apiman.django.Middleware",
-        ... ]
-        Set config in settings.py:
-        >>> APIMAN_TITLE = "OpenAPI Document"
-        ... APIMNA_SPECIFICATION_URL="/apiman/specification/"
-        ...
-
-        Then in views:
-        >>> from apiman.django import openapi
-        >>> openapi.add_schema(
-        ...     "Dog",
-        ...     {
-        ...         "properties": {
-        ...             "id": {"description": "global unique", "type": "integer"},
-        ...             "name": {"type": "string"},
-        ...             "age": {"type": "integer"},
-        ...         },
-        ...         "type": "object",
-        ...     },
-        ... )
-        >>> @openapi.from_file("./examples/docs/dogs_get.yml")
-        ... def list_dogs(req):
-        ...     return JsonRespons(list(DOGS.values()))
-        """
         super().__init__(
             title=title,
             specification_url=specification_url,
@@ -63,7 +61,6 @@ class Extension(OpenApi):
             redoc_template=redoc_template,
             template=template,
         )
-        self.decorators = decorators
         self.views: typing.Dict[str, typing.Callable] = {}
 
     def init_app(self):
@@ -155,8 +152,6 @@ class Extension(OpenApi):
             return self.specification
 
     def route(self, url: str, func):
-        for decorator in self.decorators:
-            func = decorator(func)
         self.views[url] = func
 
     def add_path(
@@ -178,8 +173,8 @@ class Extension(OpenApi):
         return "/".join(_subs)
 
 
-openapi = Extension()
-openapi.init_app()
+apiman = Apiman()
+apiman.init_app()
 
 
 class Middleware:
@@ -187,10 +182,13 @@ class Middleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest):
-        openapi.load_specification(None)
+        apiman.load_specification(None)
         url = request.get_full_path()
-        if url in openapi.views:
-            return openapi.views[url]()
+        if url in apiman.views:
+            return apiman.views[url]()
 
         else:
             return self.get_response(request)
+
+
+Extension = Apiman

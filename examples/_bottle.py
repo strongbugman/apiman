@@ -3,9 +3,9 @@ from bottle import app, request, route, run
 from openapi_spec_validator import validate_v3_spec
 from webtest import TestApp
 
-from apiman.bottle import Extension
+from apiman.bottle import Apiman
 
-apiman = Extension()
+apiman = Apiman()
 apiman.init_app(app[0])
 
 

@@ -9,7 +9,7 @@ import yaml
 import apiman
 
 
-class OpenApi:
+class Apiman:
     HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
     SPECIFICATION_FILE = "__spec_file__"
     SPECIFICATION_YAML = "__spec_yaml__"

@@ -1,59 +1,35 @@
-import os
 import typing
 
 from flask import Flask, Request, Response, jsonify
 from jinja2 import Template
 
-from .openapi import OpenApi
+from .base import Apiman as _Apiman
 
 
-class Extension(OpenApi):
-    def __init__(
-        self,
-        decorators: typing.Sequence[
-            typing.Callable[[typing.Callable], typing.Callable]
-        ] = tuple(),
-        title="OpenAPI Document",
-        specification_url="/apiman/specification/",
-        swagger_url="/apiman/swagger/",
-        redoc_url="/apiman/redoc/",
-        swagger_template=os.path.join(OpenApi.STATIC_DIR, "swagger.html"),
-        redoc_template=os.path.join(OpenApi.STATIC_DIR, "redoc.html"),
-        template=os.path.join(OpenApi.STATIC_DIR, "template.yaml"),
-    ):
-        """Flask extension
+class Apiman(_Apiman):
+    """Flask extension
 
-        >>> app = Flask(__name__)
-        >>> openapi = Extension(
-        ...     template="./examples/docs/dog_template.yml", decorators=(lambda f: f,)
-        ... )
-        >>> openapi.init_app(app)
-        >>> openapi.add_schema(
-        ...     "Dog",
-        ...     {
-        ...         "properties": {
-        ...             "id": {"description": "global unique", "type": "integer"},
-        ...             "name": {"type": "string"},
-        ...             "age": {"type": "integer"},
-        ...         },
-        ...         "type": "object",
-        ...     },
-        ... )
-        >>> @app.route("/dogs/", methods=["GET"])
-        ... @openapi.from_file("./examples/docs/dogs_get.yml")
-        ... def list_dogs():
-        ...     return jsonify(list(DOGS.values()))
-        """
-        super().__init__(
-            title=title,
-            specification_url=specification_url,
-            swagger_url=swagger_url,
-            redoc_url=redoc_url,
-            swagger_template=swagger_template,
-            redoc_template=redoc_template,
-            template=template,
-        )
-        self.decorators = decorators
+    >>> app = Flask(__name__)
+    >>> apiman = Apiman(
+    ...     template="./examples/docs/dog_template.yml"
+    ... )
+    >>> apiman.init_app(app)
+    >>> apiman.add_schema(
+    ...     "Dog",
+    ...     {
+    ...         "properties": {
+    ...             "id": {"description": "global unique", "type": "integer"},
+    ...             "name": {"type": "string"},
+    ...             "age": {"type": "integer"},
+    ...         },
+    ...         "type": "object",
+    ...     },
+    ... )
+    >>> @app.route("/dogs/", methods=["GET"])
+    ... @apiman.from_file("./examples/docs/dogs_get.yml")
+    ... def list_dogs():
+    ...     return jsonify(list(DOGS.values()))
+    """
 
     def init_app(self, app: Flask):
         app.extensions["apiman"] = self
@@ -76,7 +52,7 @@ class Extension(OpenApi):
             self.route(
                 app,
                 self.specification_url,
-                "openapi_specification",
+                "apiman_specification",
                 lambda: jsonify(self.load_specification(app)),
             )
 
@@ -134,8 +110,6 @@ class Extension(OpenApi):
             return self.specification
 
     def route(self, app: Flask, url: str, endpoint: str, func):
-        for decorator in self.decorators:
-            func = decorator(func)
         app.route(url, endpoint=endpoint, methods=["GET"])(func)
 
     def add_path(
@@ -155,3 +129,6 @@ class Extension(OpenApi):
                 _subs.append(_sub)
 
         return "/".join(_subs)
+
+
+Extension = Apiman
