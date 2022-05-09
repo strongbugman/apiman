@@ -7,7 +7,7 @@ APIMAN provide a easy way to integrate api manual/document for your web project
 
 ## Features
 
-* Out of the box for Flask and Starlette and Django
+* Out of the box for Starlette, Flask, Django and Bottle
 * Whole OpenAPI 2 and 3 specification support
 * Configurable [SwaggerUI](http://swagger.io/swagger-ui/) and [RedocUI](https://rebilly.github.io/ReDoc/)
 * Request(json body、query、header...) validation by API specification
@@ -34,11 +34,11 @@ info:
 
 ```python
 from starlette.applications import Starlette
-from apiman.starlette import Extension 
+from apiman.starlette import Apiman 
 # from flask import Flask
-# from apiman.flask import Extension
+# from apiman.flask import Apiman
 
-apiman = Extension(template="./docs/openapi.yml")
+apiman = Apiman(template="./docs/openapi.yml")
 ```
 
 ### register apiman
@@ -46,7 +46,7 @@ apiman = Extension(template="./docs/openapi.yml")
 ```python
 # app = Flask(__name__)
 app = Starlette()
-openapi.init_app(app)
+apiman.init_app(app)
 ```
 
 ### add document for api endpoint
@@ -79,7 +79,7 @@ by yaml content:
 
 ```python
 @app.route("/hello/", methods=["GET"])
-@openapi.from_yaml(
+@apiman.from_yaml(
     """
     summary: hello api
     tags:
@@ -105,12 +105,12 @@ by file:
 
 ```python
 @app.route("/hello/", methods=["GET"])
-@openapi.from_file("./docs/hello.yml")
+@apiman.from_file("./docs/hello.yml")
 async def hello(req: Request):
     return Response(f"hello")
 
 @app.route("/hello/", methods=["GET"])
-@openapi.from_file("./docs/hello.json")
+@apiman.from_file("./docs/hello.json")
 async def hello(req: Request):
     return Response(f"hello")
 ```
@@ -125,7 +125,7 @@ async def hello(req: Request):
 Config apiman's ui url, title and ui html template
 
 ```python
-apiman = Extension(
+apiman = Apiman(
   title="OpenAPI document",
   specification_url="/apiman/specification/",
   swagger_url="/apiman/swagger/",
@@ -162,7 +162,7 @@ definitions:
 or by code:
 
 ```python
-openapi.add_schema(
+apiman.add_schema(
     "Cat",
     {
         "properties": {
@@ -177,7 +177,7 @@ openapi.add_schema(
 (All specification data store in `apiman.specification`), then use it by OpenAPI way:
 
 ```python
-@openapi.from_yaml(
+@apiman.from_yaml(
     """
     responses:
       "200":
@@ -194,7 +194,7 @@ valide request by `validate_request`
 
 ```python
 @app.route("/hello/", methods=["POST"])
-@openapi.from_yaml(
+@apiman.from_yaml(
     """
     summary: hello api
     tags:
@@ -231,7 +231,7 @@ valide request by `validate_request`
 )
 async def get(self, req: Request):
     await req.json()
-    openapi.validate_request(req)
+    apiman.validate_request(req)
     # get validated params
     request.query_params
     request.cookies
@@ -276,12 +276,12 @@ from uvicorn import run
 from openapi_spec_validator import validate_v2_spec
 from starlette.testclient import TestClient
 
-from apiman.starlette import Extension
+from apiman.starlette import Apiman
 
 
 app = Starlette()
-openapi = Extension(template="./examples/docs/cat_template.yml")
-openapi.init_app(app)
+apiman = Apiman(template="./examples/docs/cat_template.yml")
+apiman.init_app(app)
 
 
 # define data
@@ -290,7 +290,7 @@ CATS = {
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
 # add schema definition
-openapi.add_schema(
+apiman.add_schema(
     "Cat",
     {
         "properties": {
@@ -333,7 +333,7 @@ class Cat(HTTPEndpoint):
 
     def get(self, req: Request):
         # validate params in path query header and cookie by schema (only support string type)
-        openapi.validate_request(req)
+        apiman.validate_request(req)
         return JSONResponse(CATS[int(req.path_params["id"])])
 
     def delete(self, req: Request):
@@ -362,17 +362,17 @@ class Cat(HTTPEndpoint):
 
 # define doc by yaml or json file
 @app.route("/cats/", methods=["GET"])
-@openapi.from_file("./examples/docs/cats_get.yml")
+@apiman.from_file("./examples/docs/cats_get.yml")
 def list_cats(req: Request):
     return JSONResponse(list(CATS.values()))
 
 
 @app.route("/cats/", methods=["POST"])
-@openapi.from_file("./examples/docs/cats_post.json")
+@apiman.from_file("./examples/docs/cats_post.json")
 async def list_cats(req: Request):
     await req.json()
     # validate json body
-    openapi.validate_request(req)
+    apiman.validate_request(req)
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
@@ -389,5 +389,5 @@ See **examples/** for more examples
 
 ## How it works
 
-* Provide a base class("OpenApi") to handle api specification's collection
-* Provide extensions to extract api specification and register http endpoints to show UI web page and specification 
+* Provide a base class to handle api specification's collection
+* Provide extension for every web framework to extract api specification and register http endpoints to show UI web page and specification 
