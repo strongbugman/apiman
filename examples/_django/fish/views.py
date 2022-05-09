@@ -1,8 +1,9 @@
 import json
 
-from apiman.django import openapi
 from django.http import HttpResponse, JsonResponse
 from django.views import View
+
+from apiman.django import apiman
 
 fishes = {
     1: {
@@ -12,7 +13,7 @@ fishes = {
     }
 }
 
-openapi.add_schema(
+apiman.add_schema(
     "Fish",
     {
         "properties": {
@@ -42,7 +43,7 @@ def health(req, echo):
         "200":
           description: OK
     """
-    openapi.validate_request(req)
+    apiman.validate_request(req)
     return HttpResponse(echo)
 
 
@@ -64,7 +65,7 @@ class FishView(View):
           "404":
             description: Not found
         """
-        openapi.validate_request(request)
+        apiman.validate_request(request)
         return JsonResponse(fishes[int(request.GET["id"])])
 
     def post(self, request):
@@ -95,12 +96,12 @@ class FishView(View):
           "404":
             description: Not found
         """
-        openapi.validate_request(request)
+        apiman.validate_request(request)
         data = json.loads(request.body)
         fishes[data["id"]] = data
         return JsonResponse(data)
 
-    @openapi.from_yaml(
+    @apiman.from_yaml(
         """
         summary: Delete single fish
         tags:

@@ -9,7 +9,7 @@ import yaml
 import apiman
 
 
-class OpenApi:
+class Apiman:
     HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
     SPECIFICATION_FILE = "__spec_file__"
     SPECIFICATION_YAML = "__spec_yaml__"
@@ -106,7 +106,7 @@ class OpenApi:
         else:
             self.specification["paths"][path] = specification
 
-    def get_path(self, path: str, method: str):
+    def _get_path_schema(self, path: str, method: str):
         schema: typing.Dict[str, typing.Dict[str, typing.Any]] = {
             "query": {},
             "json": {},
@@ -174,18 +174,18 @@ class OpenApi:
 
         return schema
 
-    def _get_request_data(self, request: typing.Any, k: str) -> typing.Dict:
+    def get_request_data(self, request: typing.Any, k: str) -> typing.Any:
         pass
 
-    def _get_request_schema(self, request: typing.Any) -> typing.Dict:
+    def get_request_schema(self, request: typing.Any) -> typing.Dict:
         pass
 
     def validate_request(self, request: typing.Any):
-        schema = self._get_request_schema(request)
+        schema = self.get_request_schema(request)
         for k, s in schema.items():
             if not s:
                 continue
-            jsonschema_rs.JSONSchema(s).validate(self._get_request_data(request, k))
+            jsonschema_rs.JSONSchema(s).validate(self.get_request_data(request, k))
 
     def from_file(self, file_path: str) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:

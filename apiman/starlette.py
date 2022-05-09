@@ -1,4 +1,3 @@
-import os
 import typing
 
 from jinja2 import Template
@@ -7,62 +6,37 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Mount, Route
 
-from .openapi import OpenApi
-
-EndpointFunc = typing.Callable[
-    [Request], typing.Union[Response, typing.Coroutine[None, None, Response]]
-]
+from .base import Apiman as _Apiman
 
 
-class Extension(OpenApi):
-    def __init__(
-        self,
-        decorators: typing.Sequence[
-            typing.Callable[[EndpointFunc], EndpointFunc]
-        ] = tuple(),
-        title="OpenAPI Document",
-        specification_url="/apiman/specification/",
-        swagger_url="/apiman/swagger/",
-        redoc_url="/apiman/redoc/",
-        swagger_template=os.path.join(OpenApi.STATIC_DIR, "swagger.html"),
-        redoc_template=os.path.join(OpenApi.STATIC_DIR, "redoc.html"),
-        template=os.path.join(OpenApi.STATIC_DIR, "template.yaml"),
-    ):
-        """Starlette extention
+class Apiman(_Apiman):
+    """Starlette extention
 
-        >>> app = Starlette()
-        >>> openapi = Extension(
-        ...     template="./examples/docs/cat_template.yml", decorators=(lambda f: f,)
-        ... )
-        >>> openapi.init_app(app)
-        >>> openapi.add_schema(
-        ...     "Cat",
-        ...     {
-        ...         "properties": {
-        ...             "id": {"description": "global unique", "type": "integer"},
-        ...             "name": {"type": "string"},
-        ...             "age": {"type": "integer"},
-        ...         },
-        ...         "type": "object",
-        ...     },
-        ... )
-        >>> @app.route("/cats/", methods=["GET"])
-        ... @openapi.from_file("./examples/docs/cats_get.yml")
-        ... def list_cats(req: Request):
-        ...     return JSONResponse(list(CATS.values()))
-        """
-        super().__init__(
-            title=title,
-            specification_url=specification_url,
-            swagger_url=swagger_url,
-            redoc_url=redoc_url,
-            swagger_template=swagger_template,
-            redoc_template=redoc_template,
-            template=template,
-        )
-        self.decorators = decorators
+    >>> app = Starlette()
+    >>> apiman = Apiman(
+    ...     template="./examples/docs/cat_template.yml",
+    ... )
+    >>> apiman.init_app(app)
+    >>> apiman.add_schema(
+    ...     "Cat",
+    ...     {
+    ...         "properties": {
+    ...             "id": {"description": "global unique", "type": "integer"},
+    ...             "name": {"type": "string"},
+    ...             "age": {"type": "integer"},
+    ...         },
+    ...         "type": "object",
+    ...     },
+    ... )
+    >>> @app.route("/cats/", methods=["GET"])
+    ... @apiman.from_file("./examples/docs/cats_get.yml")
+    ... def list_cats(req: Request):
+    ...     return JSONResponse(list(CATS.values()))
+    """
 
     def init_app(self, app: Starlette):
+        app.on_event("startup")(lambda: self.load_specification(app))
+
         if self.swagger_template and self.swagger_url:
             swagger_html = Template(open(self.swagger_template).read()).render(
                 self.config
@@ -79,7 +53,7 @@ class Extension(OpenApi):
             )
         self.router = app.router
 
-    def _get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> typing.Dict:
         # get regex path, eg: "/api/cats/{id}/"
         path = ""
         for r in self.router.routes:
@@ -87,9 +61,9 @@ class Extension(OpenApi):
             if scope:
                 path = getattr(r, "path", "") or scope.get("path", "")
                 break
-        return self.get_path(path, request.method.lower())
+        return self._get_path_schema(path, request.method.lower())
 
-    def _get_request_data(self, request: Request, k: str) -> typing.Dict:
+    def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
             return request.query_params._dict
         elif k == "path":
@@ -154,7 +128,8 @@ class Extension(OpenApi):
         else:
             return self.specification
 
-    def route(self, app: Starlette, url: str, func: EndpointFunc):
-        for decorator in self.decorators:
-            func = decorator(func)
+    def route(self, app: Starlette, url: str, func: typing.Callable):
         app.add_route(url, func, methods=["GET"], include_in_schema=False)
+
+
+Extension = Apiman

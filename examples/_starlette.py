@@ -9,14 +9,12 @@ from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 from uvicorn import run
 
-from apiman.starlette import Extension
+from apiman.starlette import Apiman
 
 app = Starlette()
 sub_app = Starlette()
-openapi = Extension(
-    template="./examples/docs/cat_template.yml", decorators=(lambda f: f,)
-)
-openapi.init_app(app)
+apiman = Apiman(template="./examples/docs/cat_template.yml")
+apiman.init_app(app)
 
 
 # define data
@@ -25,8 +23,8 @@ CATS = {
     2: {"id": 2, "name": "DingDing", "age": 1},
 }
 # add schema definition
-openapi.add_schema("cat_age", {"type": "integer", "minimum": 0, "maximum": 3000})
-openapi.add_schema(
+apiman.add_schema("cat_age", {"type": "integer", "minimum": 0, "maximum": 3000})
+apiman.add_schema(
     "Cat",
     {
         "properties": {
@@ -72,7 +70,7 @@ class Cat(HTTPEndpoint):
     """
 
     def get(self, req: Request):
-        openapi.validate_request(req)
+        apiman.validate_request(req)
         return JSONResponse(CATS[int(req.path_params["id"])])
 
     def delete(self, req: Request):
@@ -101,16 +99,16 @@ class Cat(HTTPEndpoint):
 
 # define doc by yaml or json file
 @sub_app.route("/cats/", methods=["GET"])
-@openapi.from_file("./examples/docs/cats_get.yml")
+@apiman.from_file("./examples/docs/cats_get.yml")
 def list_cats(req: Request):
     return JSONResponse(list(CATS.values()))
 
 
 @sub_app.route("/cats/", methods=["POST"])
-@openapi.from_file("./examples/docs/cats_post.json")
+@apiman.from_file("./examples/docs/cats_post.json")
 async def create_cat(req: Request):
     await req.json()
-    openapi.validate_request(req)
+    apiman.validate_request(req)
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
@@ -121,11 +119,11 @@ app.mount("/", sub_app)
 
 def test_app():
     client = TestClient(app)
-    spec = openapi.load_specification(app)
+    spec = apiman.load_specification(app)
     validate_v2_spec(spec)
-    assert client.get(openapi.config["specification_url"]).json() == spec
-    assert client.get(openapi.config["swagger_url"]).status_code == 200
-    assert client.get(openapi.config["redoc_url"]).status_code == 200
+    assert client.get(apiman.config["specification_url"]).json() == spec
+    assert client.get(apiman.config["swagger_url"]).status_code == 200
+    assert client.get(apiman.config["redoc_url"]).status_code == 200
     # --
     with pytest.raises(Exception):
         client.get("/cat/1/")
