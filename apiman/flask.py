@@ -84,7 +84,8 @@ class Apiman(_Apiman):
                 if hasattr(func, "view_class"):  # view class
                     # from class
                     specification = self.parse(func.view_class)  # type: ignore
-                    self.add_path(route.rule, specification)
+                    if specification:
+                        self.add_path(route.rule, specification)
                     # from class methods
                     for method in route.methods:  # type: ignore
                         _func = getattr(func.view_class, method.lower(), None)  # type: ignore

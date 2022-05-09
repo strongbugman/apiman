@@ -1,6 +1,7 @@
 import os
+import unittest
 
-from examples import _flask, _bottle, _starlette
+from examples import _bottle, _flask, _starlette, _tornado
 
 
 def test_starltte():
@@ -21,3 +22,11 @@ def test_django():
 
 def test_bottle():
     _bottle.test_app()
+
+
+def test_tornado():
+    result = unittest.TextTestRunner().run(
+        unittest.TestLoader().loadTestsFromTestCase(_tornado.TestCase)
+    )
+    assert not result.errors
+    assert not result.failures
