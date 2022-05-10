@@ -18,6 +18,7 @@ def test_django():
     from django.core.management import execute_from_command_line
 
     execute_from_command_line(["", "test"])
+    os.chdir(os.path.join("..", ".."))
 
 
 def test_bottle():
