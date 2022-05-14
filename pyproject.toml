@@ -25,6 +25,7 @@ python = "^3.6.2"
 PyYAML = "^6.0"
 Jinja2 = "^3.0.2"
 jsonschema-rs = "^0.13.0"
+xmltodict = "^0.13.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
@@ -44,6 +45,7 @@ Django = "^3.0.0"
 bottle = "^0.12.0"
 WebTest = "^3.0.0"
 tornado = "^6.0"
+python-multipart = "^0.0.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

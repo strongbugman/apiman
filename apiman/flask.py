@@ -74,6 +74,10 @@ class Apiman(_Apiman):
             return dict(request.headers.items())
         elif k == "json":
             return request.json
+        elif k == "form":
+            return dict(request.form)
+        elif k == "xml":
+            return self.xmltodict(request.data)
         else:
             return {}
 

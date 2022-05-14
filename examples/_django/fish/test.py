@@ -43,6 +43,31 @@ class MyTestCase(TestCase):
                 content_type="application/json",
                 **{"HTTP_X-Theader": "t"}
             )
+        # form
+        with self.assertRaises(ValidationError):
+            self.client.post(
+                "/fishes/",
+                "id=2&name=w&age=0",
+                content_type="application/x-www-form-urlencoded",
+                **{"HTTP_X-Theader": "t"}
+            )
+        # xml
+        self.assertEqual(
+            self.client.post(
+                "/fishes/",
+                """<?xml version="1.0" encoding="UTF-8"?> <data> <age>0</age> <id>0</id> <name>string</name> </data>""",
+                content_type="application/xml",
+                **{"HTTP_X-Theader": "t"}
+            ).status_code,
+            200,
+        )
+        with self.assertRaises(ValidationError):
+            self.client.post(
+                "/fishes/",
+                """<?xml version="1.0" encoding="UTF-8"?> <data> <id>0</id> <name>string</name> </data>""",
+                content_type="application/xml",
+                **{"HTTP_X-Theader": "t"}
+            )
         # cookie
         with self.assertRaises(ValidationError):
             self.client.cookies.pop("x-test")

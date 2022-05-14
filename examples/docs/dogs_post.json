@@ -10,6 +10,30 @@
         "schema": {
           "$ref": "#/components/schemas/Dog"
         }
+      },
+      "application/xml": {
+        "schema": {
+          "type": "object",
+          "xml": {
+            "name": "data"
+          },
+          "properties": {
+              "id": {"description": "global unique", "type": "integer"},
+              "name": {"type": "string"},
+              "age": {"type": "integer"}
+          },
+          "required": ["id", "name", "age"]
+        }
+      },
+      "application/x-www-form-urlencoded": {
+        "schema": {
+          "$ref": "#/components/schemas/Dog"
+        }
+      },
+      "multipart/form-data": {
+        "schema": {
+          "$ref": "#/components/schemas/Dog"
+        }
       }
     }
   },

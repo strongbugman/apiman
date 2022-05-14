@@ -68,7 +68,7 @@ apiman.add_schema(
                                 "required": ["id", "name", "age"],
                                 "type": "object",
                             }
-                        }
+                        },
                     },
                     "description": "OK",
                 },
@@ -149,6 +149,33 @@ def test_app():
     )
     with pytest.raises(Exception):
         assert client.post("/dogs/", json={"id": 1, "name": "doge"}).status_code == 200
+    with pytest.raises(Exception):
+        assert (
+            client.post(
+                "/dogs/",
+                data="age=1&id=2&name=3",
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            ).status_code
+            == 200
+        )
+    with pytest.raises(Exception):
+        assert (
+            client.post(
+                "/dogs/",
+                data="age=1&id=2&name=3",
+                headers={"Content-Type": "multipart/form-data"},
+            ).status_code
+            == 200
+        )
+    with pytest.raises(Exception):
+        assert (
+            client.post(
+                "/dogs/",
+                data="""<?xml version="1.0" encoding="UTF-8"?> <data> <age>0</age> <id>0</id> <name>string</name> </data>""",
+                headers={"Content-Type": "application/xml"},
+            ).status_code
+            == 200
+        )
     assert (
         client.post("/dogs/", json={"id": 1, "name": "doge", "age": 3}).status_code
         == 200

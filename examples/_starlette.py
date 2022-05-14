@@ -114,6 +114,40 @@ async def create_cat(req: Request):
     return JSONResponse(cat)
 
 
+@sub_app.route("/cats_form/", methods=["POST"])
+async def create_cat_by_form(req: Request):
+    """
+    summary: create cat by request form data
+    tags:
+    - cats
+    parameters:
+    - name: id
+      type: string
+      in: formData
+      required: True
+    - name: name
+      type: string
+      in: formData
+      required: True
+    - name: age
+      type: string
+      in: formData
+      required: True
+    responses:
+      "200":
+        description: OK
+        schema:
+          $ref: '#/definitions/Cat'
+    """
+    await req.form()
+    apiman.validate_request(req)
+    cat = dict(await req.form())
+    cat["id"] = int(cat["id"])
+    cat["age"] = int(cat["age"])
+    CATS[cat["id"]] = cat
+    return JSONResponse(cat)
+
+
 app.mount("/", sub_app)
 
 
@@ -138,6 +172,14 @@ def test_app():
     # --
     with pytest.raises(Exception):
         client.post("/cats/", json={"name": "test", "id": 3})
+    assert (
+        client.post(
+            "/cats_form/",
+            data={"name": "test", "id": "3", "age": "4"},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        ).status_code
+        == 200
+    )
     assert (
         client.post("/cats/", json={"name": "test", "id": 3, "age": 4}).status_code
         == 200
