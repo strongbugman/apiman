@@ -77,6 +77,30 @@ class ValidationHandler(tornado.web.RequestHandler):
             required:
               - id
               - name
+        application/xml:
+          schema:
+            xml:
+              name: 'data'
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+            required:
+              - id
+              - name
+        application/x-www-form-urlencoded:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+            required:
+              - id
+              - name
     responses:
       "200":
         description: OK
@@ -115,17 +139,65 @@ class TestCase(tornado.testing.AsyncHTTPTestCase):
                 "/validate/test?query=test",
                 method="POST",
                 body=json.dumps({"id": 1, "name": "test"}),
-                headers={"Header": "test", "Cookie": "cookie=test"},
+                headers={
+                    "Header": "test",
+                    "Cookie": "cookie=test",
+                    "Content-Type": "application/json",
+                },
+            ).code
+            == 200
+        )
+        assert (
+            self.fetch(
+                "/validate/test?query=test",
+                method="POST",
+                body="id=1&name=test",
+                headers={
+                    "Header": "test",
+                    "Cookie": "cookie=test",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            ).code
+            == 200
+        )
+        assert (
+            self.fetch(
+                "/validate/test?query=test",
+                method="POST",
+                body="""<?xml version="1.0" encoding="UTF-8"?> <data> <id>0</id> <name>string</name> </data>""",
+                headers={
+                    "Header": "test",
+                    "Cookie": "cookie=test",
+                    "Content-Type": "application/xml",
+                },
             ).code
             == 200
         )
         with pytest.raises(Exception):
             assert (
                 self.fetch(
+                    "/validate/test?query=test",
+                    method="POST",
+                    body=json.dumps({"id": 1, "name": "test"}),
+                    headers={
+                        "Header": "test",
+                        "Cookie": "cookie=test",
+                        "Content-Type": "application/custom",
+                    },
+                ).code
+                == 200
+            )
+        with pytest.raises(Exception):
+            assert (
+                self.fetch(
                     "/validate/test",
                     method="POST",
                     body=json.dumps({"id": 1, "name": "test"}),
-                    headers={"Header": "test", "Cookie": "cookie=test"},
+                    headers={
+                        "Header": "test",
+                        "Cookie": "cookie=test",
+                        "Content-Type": "application/json",
+                    },
                 ).code
                 == 200
             )
@@ -135,7 +207,11 @@ class TestCase(tornado.testing.AsyncHTTPTestCase):
                     "/validate/test?query=test",
                     method="POST",
                     body=json.dumps({"id": "1", "name": "test"}),
-                    headers={"Header": "test", "Cookie": "cookie=test"},
+                    headers={
+                        "Header": "test",
+                        "Cookie": "cookie=test",
+                        "Content-Type": "application/json",
+                    },
                 ).code
                 == 200
             )
@@ -145,7 +221,11 @@ class TestCase(tornado.testing.AsyncHTTPTestCase):
                     "/validate/test?query=test",
                     method="POST",
                     body=json.dumps({"id": 1, "name": "test"}),
-                    headers={"Header1": "test", "Cookie": "cookie=test"},
+                    headers={
+                        "Header1": "test",
+                        "Cookie": "cookie=test",
+                        "Content-Type": "application/json",
+                    },
                 ).code
                 == 200
             )
@@ -155,7 +235,11 @@ class TestCase(tornado.testing.AsyncHTTPTestCase):
                     "/validate/test?query=test",
                     method="POST",
                     body=json.dumps({"id": 1, "name": "test"}),
-                    headers={"Header": "test", "Cookie": "cookie1=test"},
+                    headers={
+                        "Header": "test",
+                        "Cookie": "cookie1=test",
+                        "Content-Type": "application/json",
+                    },
                 ).code
                 == 200
             )

@@ -69,6 +69,9 @@ class Apiman(_Apiman):
             self._covert_path_rule(path), handler.request.method.lower()  # type: ignore
         )
 
+    def get_request_content_type(self, handler: RequestHandler) -> str:
+        return handler.request.headers.get("Content-Type", "")
+
     def get_request_data(self, handler: RequestHandler, k: str) -> typing.Any:
         if k == "query":
             return {
@@ -89,6 +92,10 @@ class Apiman(_Apiman):
             return dict(handler.request.headers)
         elif k == "json":
             return json.loads(handler.request.body)
+        elif k == "form":
+            return {k: v[0].decode() for k, v in handler.request.body_arguments.items()}
+        elif k == "xml":
+            return self.xmltodict(handler.request.body)
         else:
             return {}
 

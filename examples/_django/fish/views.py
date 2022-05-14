@@ -1,5 +1,3 @@
-import json
-
 from django.http import HttpResponse, JsonResponse
 from django.views import View
 
@@ -90,6 +88,25 @@ class FishView(View):
             application/json:
               schema:
                 $ref: '#/components/schemas/Fish'
+            application/x-www-form-urlencoded:
+              schema:
+                $ref: '#/components/schemas/Fish'
+            application/xml:
+              schema:
+                type: 'object'
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  age:
+                    type: string
+                required:
+                - id
+                - name
+                - age
+                xml:
+                  name: data
         responses:
           "204":
             description: OK
@@ -97,9 +114,9 @@ class FishView(View):
             description: Not found
         """
         apiman.validate_request(request)
-        data = json.loads(request.body)
-        fishes[data["id"]] = data
-        return JsonResponse(data)
+        # data = json.loads(request.body)
+        # fishes[data["id"]] = data
+        return JsonResponse({})
 
     @apiman.from_yaml(
         """

@@ -2,8 +2,10 @@ import copy
 import json
 import os
 import typing
+from collections import OrderedDict
 
 import jsonschema_rs
+import xmltodict
 import yaml
 
 import apiman
@@ -15,6 +17,11 @@ class Apiman:
     SPECIFICATION_YAML = "__spec_yaml__"
     SPECIFICATION_DICT = "__spec_dict__"
     STATIC_DIR = f"{getattr(apiman, '__path__')[0]}/static/"
+    VALIDATE_REQUEST_CONTENT_TYPES = {
+        "json": ("application/json",),
+        "xml": ("application/xml",),
+        "form": ("application/x-www-form-urlencoded", "multipart/form-data"),
+    }
 
     def __init__(
         self,
@@ -113,6 +120,8 @@ class Apiman:
             "header": {},
             "path": {},
             "cookie": {},
+            "xml": {},
+            "form": {},
         }
         if (
             "paths" not in self.specification
@@ -130,6 +139,7 @@ class Apiman:
         header_schema = copy.deepcopy(base_schema)
         path_schema = copy.deepcopy(base_schema)
         cookie_schema = copy.deepcopy(base_schema)
+        form_schema = copy.deepcopy(base_schema)
         for d in self.specification["paths"][path][method].get("parameters", []):
             if d.get("in") == "query":
                 _schema = query_schema
@@ -139,6 +149,8 @@ class Apiman:
                 _schema = path_schema
             elif d.get("in") == "cookie":
                 _schema = cookie_schema
+            elif d.get("in") == "formData":
+                _schema = form_schema
             elif self.version[0] <= 2 and d.get("in") == "body" and "schema" in d:
                 schema["json"] = d["schema"]
                 continue
@@ -159,18 +171,21 @@ class Apiman:
             ("header", header_schema),
             ("path", path_schema),
             ("cookie", cookie_schema),
+            ("form", form_schema),
         ):
             if s["properties"]:
                 schema[k] = s
-        # json body
+        # request body
         if self.version[0] > 2:
-            try:
-                d = self.specification["paths"][path][method]["requestBody"]["content"][
-                    "application/json"
-                ]
-                schema["json"] = d["schema"]
-            except KeyError:
-                pass
+            for k, ts in self.VALIDATE_REQUEST_CONTENT_TYPES.items():
+                for t in ts:
+                    try:
+                        d = self.specification["paths"][path][method]["requestBody"][
+                            "content"
+                        ][t]
+                        schema[k] = d["schema"]
+                    except KeyError:
+                        pass
 
         return schema
 
@@ -180,12 +195,33 @@ class Apiman:
     def get_request_schema(self, request: typing.Any) -> typing.Dict:
         pass
 
+    def get_request_content_type(self, request: typing.Any) -> str:
+        return request.headers.get("Content-Type")
+
     def validate_request(self, request: typing.Any):
         schema = self.get_request_schema(request)
+        body_schema_count = body_miss_count = 0
         for k, s in schema.items():
             if not s:
                 continue
-            jsonschema_rs.JSONSchema(s).validate(self.get_request_data(request, k))
+            if k in self.VALIDATE_REQUEST_CONTENT_TYPES:
+                body_schema_count += 1
+                if (
+                    self.get_request_content_type(request).split(";")[0]
+                    not in self.VALIDATE_REQUEST_CONTENT_TYPES[k]
+                ):
+                    body_miss_count += 1
+                    continue
+
+            data = self.get_request_data(request, k)
+            if k == "xml":
+                data = data.get(s["xml"]["name"], {})
+
+            jsonschema_rs.JSONSchema(s).validate(data)
+        if body_schema_count and body_schema_count == body_miss_count:
+            raise jsonschema_rs.ValidationError(
+                "Miss body content", "Miss body content", [], []
+            )
 
     def from_file(self, file_path: str) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:
@@ -232,3 +268,11 @@ class Apiman:
                 return json.load(f)
             else:
                 return yaml.safe_load(f)
+
+    @staticmethod
+    def xmltodict(content: typing.Union[str, bytes]):
+        data = xmltodict.parse(content)
+
+        for k in list(data.keys()):
+            data[k] = dict(data[k]) if isinstance(data[k], OrderedDict) else data[k]
+        return data

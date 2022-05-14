@@ -64,6 +64,30 @@ def hello():
             required:
               - id
               - name
+        application/xml:
+          schema:
+            xml:
+              name: 'data'
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+            required:
+              - id
+              - name
+        application/x-www-form-urlencoded:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+            required:
+              - id
+              - name
     responses:
       "200":
         description: OK
@@ -91,6 +115,25 @@ def test_app():
             "/validate/test?query=test",
             {"id": 1, "name": "test"},
             headers={"Header": "test"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/validate/test?query=test",
+            "id=1&name=test",
+            headers={
+                "Header": "test",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/validate/test?query=test",
+            """<?xml version="1.0" encoding="UTF-8"?> <data> <id>0</id> <name>string</name> </data>""",
+            headers={"Header": "test", "Content-Type": "application/xml"},
         ).status_code
         == 200
     )
