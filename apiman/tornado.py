@@ -70,7 +70,9 @@ class Apiman(_Apiman):
         )
 
     def get_request_content_type(self, handler: RequestHandler) -> str:
-        return handler.request.headers.get("Content-Type", "")
+        return handler.request.headers.get(
+            "Content-Type", ""
+        ) or handler.request.headers.get("content-type", "")
 
     def get_request_data(self, handler: RequestHandler, k: str) -> typing.Any:
         if k == "query":
@@ -117,8 +119,7 @@ class Apiman(_Apiman):
                         specification = self.parse(_func)
                         if specification:
                             self.add_path(path, specification, method=method)
-            self.loaded = True
-            return super().load_specification(app)
+            return self._load_specification()
         else:
             return self.specification
 

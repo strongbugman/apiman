@@ -127,8 +127,7 @@ class Apiman(_Apiman):
                                             method=method,
                                         )
 
-            self.loaded = True
-            return super().load_specification(app)
+            return self._load_specification()
         else:
             return self.specification
 

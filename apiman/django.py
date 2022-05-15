@@ -118,10 +118,10 @@ class Apiman(_Apiman):
         else:
             return {}
 
-    def _load_specification(self, pattern, base_path: str = "/"):
+    def _load_pattern_specification(self, pattern, base_path: str = "/"):
         if hasattr(pattern, "url_patterns"):
             for p in pattern.url_patterns:
-                self._load_specification(
+                self._load_pattern_specification(
                     p, base_path=base_path + getattr(pattern.pattern, "_route", "")
                 )
         else:
@@ -149,9 +149,8 @@ class Apiman(_Apiman):
 
     def load_specification(self, _) -> typing.Dict:
         if not self.loaded:
-            self._load_specification(get_resolver())
-            self.loaded = True
-            return super().load_specification(None)
+            self._load_pattern_specification(get_resolver())
+            return self._load_specification()
         else:
             return self.specification
 

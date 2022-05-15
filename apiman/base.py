@@ -61,8 +61,9 @@ class Apiman:
         assert _version, "Wrong API specification format"
         return tuple(map(int, _version.split(".")))
 
-    def load_specification(self, app: typing.Any) -> typing.Dict:
-        self.specification = self.expand(self.specification)
+    def _load_specification(self) -> typing.Dict:
+        self.specification = self.expand_specification(self.specification)
+        self.loaded = True
         return self.specification
 
     def get_by_ref(self, ref: str) -> typing.Any:
@@ -76,16 +77,16 @@ class Apiman:
 
         return data
 
-    def expand(self, obj: typing.Any) -> typing.Any:
+    def expand_specification(self, obj: typing.Any) -> typing.Any:
         if isinstance(obj, dict) and "$ref" in obj:
             return self.get_by_ref(obj["$ref"])
         else:
             if isinstance(obj, list):
                 for i, o in enumerate(obj):
-                    obj[i] = self.expand(o)
+                    obj[i] = self.expand_specification(o)
             elif isinstance(obj, dict):
                 for i, o in obj.items():
-                    obj[i] = self.expand(o)
+                    obj[i] = self.expand_specification(o)
             return obj
 
     def add_schema(self, name: str, definition: typing.Dict[str, typing.Any]):
@@ -196,7 +197,9 @@ class Apiman:
         pass
 
     def get_request_content_type(self, request: typing.Any) -> str:
-        return request.headers.get("Content-Type")
+        return request.headers.get("Content-Type", "") or request.headers.get(
+            "content-type", ""
+        )
 
     def validate_request(self, request: typing.Any):
         schema = self.get_request_schema(request)

@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from examples import _bottle, _flask, _starlette, _tornado
+from examples import _bottle, _falcon, _flask, _starlette, _tornado
 
 
 def test_starltte():
@@ -31,3 +31,7 @@ def test_tornado():
     )
     assert not result.errors
     assert not result.failures
+
+
+def test_falcon():
+    _falcon.test_app()

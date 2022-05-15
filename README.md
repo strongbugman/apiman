@@ -7,10 +7,10 @@ APIMAN provide a easy way to integrate api manual/document for your web project
 
 ## Features
 
-* Out of the box for Starlette, Flask, Django, Bottle and Tornado
+* Out of the box for Starlette, Flask, Django, Bottle, Tornado and Falcon
 * Whole OpenAPI 2 and 3 specification support
 * Configurable [SwaggerUI](http://swagger.io/swagger-ui/) and [RedocUI](https://rebilly.github.io/ReDoc/)
-* Request(json body、query、header...) validation by API specification
+* Request data(json/xml/form body, query, header, cookie, path args) validation by API specification
 
 ## Install
 
