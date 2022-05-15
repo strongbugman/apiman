@@ -89,8 +89,7 @@ class Apiman(_Apiman):
                     self.add_path(route.rule, specification)
                 elif route.method.lower() in self.HTTP_METHODS:
                     self.add_path(route.rule, specification, method=route.method)
-            self.loaded = True
-            return super().load_specification(app)
+            return self._load_specification()
         else:
             return self.specification
 
