@@ -3,7 +3,6 @@
 import pytest
 from flask import Flask, Response, jsonify, request
 from flask.views import MethodView
-from openapi_spec_validator import validate_v3_spec
 
 from apiman.flask import Apiman
 
@@ -132,7 +131,7 @@ def create_dog():
 def test_app():
     client = app.test_client()
     spec = apiman.load_specification(app)
-    validate_v3_spec(spec)
+    apiman.validate_specification()
     assert client.get(apiman.config["specification_url"]).json == spec
     assert client.get(apiman.config["swagger_url"]).status_code == 200
     assert client.get(apiman.config["redoc_url"]).status_code == 200

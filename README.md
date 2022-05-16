@@ -115,6 +115,11 @@ async def hello(req: Request):
     return Response(f"hello")
 ```
 
+### validate defined OPENAPI specification
+
+```python
+apiman.validate_specification()
+```
 
 ### run app and browse swagger ui at `server:port/apiman/swagger` or `server:port/apiman/redoc`
 

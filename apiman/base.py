@@ -201,6 +201,17 @@ class Apiman:
             "content-type", ""
         )
 
+    def validate_specification(self, schema_path=""):
+        if not schema_path:
+            if self.version[0] > 2:
+                schema_path = os.path.join(self.STATIC_DIR, "openapi3.1_schema.yaml")
+            else:
+                schema_path = os.path.join(self.STATIC_DIR, "openapi2_schema.json")
+
+        jsonschema_rs.JSONSchema(self.load_file(schema_path)).validate(
+            self.specification
+        )
+
     def validate_request(self, request: typing.Any):
         schema = self.get_request_schema(request)
         body_schema_count = body_miss_count = 0

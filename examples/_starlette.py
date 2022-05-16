@@ -1,7 +1,6 @@
 """OpenAPI2(Swagger) with Starlette
 """
 import pytest
-from openapi_spec_validator import validate_v2_spec
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -154,7 +153,7 @@ app.mount("/", sub_app)
 def test_app():
     client = TestClient(app)
     spec = apiman.load_specification(app)
-    validate_v2_spec(spec)
+    apiman.validate_specification()
     assert client.get(apiman.config["specification_url"]).json() == spec
     assert client.get(apiman.config["swagger_url"]).status_code == 200
     assert client.get(apiman.config["redoc_url"]).status_code == 200

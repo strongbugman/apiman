@@ -6,7 +6,6 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.testing
 import tornado.web
-from openapi_spec_validator import validate_v3_spec
 
 from apiman.tornado import Apiman
 
@@ -128,7 +127,7 @@ class TestCase(tornado.testing.AsyncHTTPTestCase):
 
     def test_app(self):
         spec = apiman.load_specification(app)
-        validate_v3_spec(spec)
+        apiman.validate_specification()
         assert json.loads(self.fetch(apiman.config["specification_url"]).body) == spec
         assert self.fetch(apiman.config["swagger_url"]).code == 200
         assert self.fetch(apiman.config["redoc_url"]).code == 200

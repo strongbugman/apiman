@@ -226,6 +226,8 @@ wsgi_app.add_route("/validate/{path}", WSGIValidationResource())
 
 
 def test_app():
+    apiman.validate_specification()
+    wsgi_apiman.validate_specification()
     asgi_client = testing.TestClient(app)
     wsgi_client = testing.TestClient(wsgi_app)
 

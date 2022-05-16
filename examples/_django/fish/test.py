@@ -2,7 +2,6 @@ import json
 
 from django.test import TestCase
 from jsonschema_rs import ValidationError
-from openapi_spec_validator import validate_v3_spec
 
 from apiman.django import apiman
 
@@ -12,7 +11,7 @@ class MyTestCase(TestCase):
         self.assertEqual(self.client.get("/apiman/swagger/").status_code, 200)
         self.assertEqual(self.client.get("/apiman/redoc/").status_code, 200)
         self.assertEqual(self.client.get("/apiman/specification/").status_code, 200)
-        validate_v3_spec(apiman.specification)
+        apiman.validate_specification()
 
     def test_validate(self):
         self.assertEqual(self.client.get("/health/hello/").status_code, 200)

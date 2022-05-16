@@ -1,6 +1,5 @@
 import pytest
 from bottle import app, request, route, run
-from openapi_spec_validator import validate_v3_spec
 from webtest import TestApp
 
 from apiman.bottle import Apiman
@@ -103,7 +102,7 @@ def validate(path):
 def test_app():
     client = TestApp(app[0])
     spec = apiman.load_specification(app[0])
-    validate_v3_spec(spec)
+    apiman.validate_specification()
     assert client.get(apiman.config["specification_url"]).json == spec
     assert client.get(apiman.config["swagger_url"]).status_code == 200
     assert client.get(apiman.config["redoc_url"]).status_code == 200
