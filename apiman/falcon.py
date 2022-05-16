@@ -12,9 +12,9 @@ from .base import Apiman as _Apiman
 
 
 class Apiman(_Apiman):
-    """Flask extension TODO
+    """Falcon extension
 
-    >>> app = Flask(__name__)
+    >>> app = App()
     >>> apiman = Apiman(
     ...     template="./examples/docs/dog_template.yml"
     ... )
@@ -30,10 +30,7 @@ class Apiman(_Apiman):
     ...         "type": "object",
     ...     },
     ... )
-    >>> @app.route("/dogs/", methods=["GET"])
-    ... @apiman.from_file("./examples/docs/dogs_get.yml")
-    ... def list_dogs():
-    ...     return jsonify(list(DOGS.values()))
+    >>> app.add_route("/echo/{name}", ThingsResource())
     """
 
     PATH_VAR_REGEX = re.compile(r"\{(.*?)\}")
