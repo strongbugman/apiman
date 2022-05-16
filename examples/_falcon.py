@@ -133,8 +133,7 @@ class ValidationResource:
     """
 
     async def on_post(self, req: Request, resp: Response, path):
-        await req.get_media(default_when_empty={})
-        apiman.validate_request(req)
+        await apiman.async_validate_request(req)
         resp.status = falcon.HTTP_200
 
 

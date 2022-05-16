@@ -235,9 +235,10 @@ valide request by `validate_request`
     """
 )
 async def get(self, req: Request):
-    await req.json()
-    apiman.validate_request(req)
-    # get validated params
+    # await req.json()
+    # apiman.validate_request(req)
+    await apiman.async_validate_request(req)
+    # get validated params by original ways
     request.query_params
     request.cookies
     request.headers
@@ -245,18 +246,18 @@ async def get(self, req: Request):
     ...
 ```
 
-(for starlette, call `await req.json()` first to load json data)
+(for sync code, call `apiman.validate_request(req)`)
 
-This method will find this request's OpenAPI specification and request params(query, path, cookie, header, json body) then validate it, we can get validate req params by origin way or raise Exceptoin(by [jsonschema_rs](https://github.com/Stranger6667/jsonschema-rs/tree/master/bindings/python))
+This method will find this request's OpenAPI specification and request params(query, path, cookie, header, body) then validate it, we can assess validated req params by origin way or raise validation exception.(by [jsonschema_rs](https://github.com/Stranger6667/jsonschema-rs/tree/master/bindings/python))
 
 
 ### limit
 
 #### type limit
 
-All request params type is **origin type**, so query/header/cookie params is always **string**, we should define this params type to string or we will get Exception(flask's path params can be int original).
+All request params type is **origin type**, so query/header/cookie params is always **string**, we should define this params type to string or we will get validation Exception(eg, flask's path params can be int type original).
 
-But if we want some integer param for string type you can set regex `pattern` in specification, eg:
+But if we want some integer param for string type, set regex `pattern` in specification, eg:
 
 ```yml
 id:
@@ -264,7 +265,7 @@ id:
   pattern: '^\d+$'
 ```
 
-or just use json body for rich format
+or just use body data for rich format
 
 ## Examples
 
@@ -278,7 +279,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.endpoints import HTTPEndpoint
 from uvicorn import run
-from openapi_spec_validator import validate_v2_spec
 from starlette.testclient import TestClient
 
 from apiman.starlette import Apiman
@@ -384,6 +384,7 @@ async def list_cats(req: Request):
 
 
 if __name__ == "__main__":
+    apiman.validate_specification()
     run(app)
 ```
 

@@ -100,6 +100,11 @@ class Apiman(_Apiman):
         else:
             return {}
 
+    async def async_get_request_data(self, request: Request, k: str) -> typing.Any:
+        if k in ("json", "form", "xml"):
+            await request.get_media()
+        return self.get_request_data(request, k)
+
     def _load_node_specification(self, nodes: typing.List[CompiledRouterNode]):
         for n in nodes:
             if n.resource:

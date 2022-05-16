@@ -89,6 +89,17 @@ class Apiman:
                     obj[i] = self.expand_specification(o)
             return obj
 
+    def validate_specification(self, schema_path=""):
+        if not schema_path:
+            if self.version[0] > 2:
+                schema_path = os.path.join(self.STATIC_DIR, "openapi3.1_schema.yaml")
+            else:
+                schema_path = os.path.join(self.STATIC_DIR, "openapi2_schema.json")
+
+        jsonschema_rs.JSONSchema(self.load_file(schema_path)).validate(
+            self.specification
+        )
+
     def add_schema(self, name: str, definition: typing.Dict[str, typing.Any]):
         if self.version[0] > 2:
             if "components" not in self.specification:
@@ -193,6 +204,9 @@ class Apiman:
     def get_request_data(self, request: typing.Any, k: str) -> typing.Any:
         pass
 
+    async def async_get_request_data(self, request: typing.Any, k: str) -> typing.Any:
+        return self.get_request_data(request, k)
+
     def get_request_schema(self, request: typing.Any) -> typing.Dict:
         pass
 
@@ -201,18 +215,9 @@ class Apiman:
             "content-type", ""
         )
 
-    def validate_specification(self, schema_path=""):
-        if not schema_path:
-            if self.version[0] > 2:
-                schema_path = os.path.join(self.STATIC_DIR, "openapi3.1_schema.yaml")
-            else:
-                schema_path = os.path.join(self.STATIC_DIR, "openapi2_schema.json")
-
-        jsonschema_rs.JSONSchema(self.load_file(schema_path)).validate(
-            self.specification
-        )
-
-    def validate_request(self, request: typing.Any):
+    def iter_request_schema(
+        self, request: typing.Any
+    ) -> typing.Generator[typing.Tuple[str, typing.Dict], None, None]:
         schema = self.get_request_schema(request)
         body_schema_count = body_miss_count = 0
         for k, s in schema.items():
@@ -226,16 +231,23 @@ class Apiman:
                 ):
                     body_miss_count += 1
                     continue
-
-            data = self.get_request_data(request, k)
-            if k == "xml":
-                data = data.get(s["xml"]["name"], {})
-
-            jsonschema_rs.JSONSchema(s).validate(data)
+            yield k, s
         if body_schema_count and body_schema_count == body_miss_count:
             raise jsonschema_rs.ValidationError(
                 "Miss body content", "Miss body content", [], []
             )
+
+    def validate_request(self, request: typing.Any):
+        for k, s in self.iter_request_schema(request):
+            data = self.get_request_data(request, k)
+            data = data.get(s["xml"]["name"], {}) if k == "xml" else data
+            jsonschema_rs.JSONSchema(s).validate(data)
+
+    async def async_validate_request(self, request: typing.Any):
+        for k, s in self.iter_request_schema(request):
+            data = await self.async_get_request_data(request, k)
+            data = data.get(s["xml"]["name"], {}) if k == "xml" else data
+            jsonschema_rs.JSONSchema(s).validate(data)
 
     def from_file(self, file_path: str) -> typing.Callable:
         def decorator(func: typing.Callable) -> typing.Callable:

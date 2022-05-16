@@ -77,9 +77,19 @@ class Apiman(_Apiman):
         elif k == "form":
             return dict(getattr(request, "_form", {}))
         elif k == "xml":
-            return self.xmltodict(getattr(request, "_body", {}))
+            return self.xmltodict(getattr(request, "_body", ""))
         else:
             return {}
+
+    async def async_get_request_data(self, request: Request, k: str) -> typing.Any:
+        if k == "json":
+            await request.json()
+        elif k == "form":
+            await request.form()
+        elif k == "xml":
+            await request.body()
+
+        return self.get_request_data(request, k)
 
     def load_specification(
         self, app: Starlette, mount: typing.Optional[Mount] = None, base_path=""

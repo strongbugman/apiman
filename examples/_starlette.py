@@ -106,8 +106,7 @@ def list_cats(req: Request):
 @sub_app.route("/cats/", methods=["POST"])
 @apiman.from_file("./examples/docs/cats_post.json")
 async def create_cat(req: Request):
-    await req.json()
-    apiman.validate_request(req)
+    await apiman.async_validate_request(req)
     cat = await req.json()
     CATS[cat["id"]] = cat
     return JSONResponse(cat)
