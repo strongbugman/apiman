@@ -41,6 +41,9 @@ class Apiman:
         self.redoc_template = redoc_template
         self.specification = self.load_file(template)
         self.loaded = False
+        self._path_schemas: typing.Dict[
+            str, typing.Dict[str, typing.Any]
+        ] = {}  # {"{path}_{method}": {schema}}
 
     @property
     def config(self) -> typing.Dict[str, str]:
@@ -126,6 +129,10 @@ class Apiman:
             self.specification["paths"][path] = specification
 
     def _get_path_schema(self, path: str, method: str):
+        cache_key = f"{path}_{method}"
+        if cache_key in self._path_schemas:
+            return self._path_schemas[cache_key]
+
         schema: typing.Dict[str, typing.Dict[str, typing.Any]] = {
             "query": {},
             "json": {},
@@ -198,7 +205,7 @@ class Apiman:
                         schema[k] = d["schema"]
                     except KeyError:
                         pass
-
+        self._path_schemas[cache_key] = schema
         return schema
 
     def get_request_data(self, request: typing.Any, k: str) -> typing.Any:
