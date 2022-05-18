@@ -12,7 +12,17 @@ import apiman
 
 
 class Apiman:
-    HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
+    HTTP_METHODS = {
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "head",
+        "connect",
+        "options",
+        "trace",
+    }
     SPECIFICATION_FILE = "__spec_file__"
     SPECIFICATION_YAML = "__spec_yaml__"
     SPECIFICATION_DICT = "__spec_dict__"
@@ -65,8 +75,9 @@ class Apiman:
         return tuple(map(int, _version.split(".")))
 
     def _load_specification(self) -> typing.Dict:
-        self.specification = self.expand_specification(self.specification)
-        self.loaded = True
+        if not self.loaded:
+            self.specification = self.expand_specification(self.specification)
+            self.loaded = True
         return self.specification
 
     def get_by_ref(self, ref: str) -> typing.Any:
