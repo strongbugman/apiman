@@ -310,6 +310,14 @@ class Apiman:
         else:
             return specification
 
+    def generate_specification_file(self, filename: str):
+        with open(filename, "w") as f:
+            f.writelines(
+                json.dumps(self.specification)
+                if filename.endswith("json")
+                else yaml.safe_dump(self.specification)
+            )
+
     @staticmethod
     def load_file(file_path: str) -> typing.Dict:
         with open(file_path) as f:

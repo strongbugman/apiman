@@ -1,3 +1,4 @@
+import os
 import pytest
 from bottle import app, request, route, run
 from webtest import TestApp
@@ -101,9 +102,6 @@ def validate(path):
 
 def test_app():
     client = TestApp(app[0])
-    spec = apiman.load_specification(app[0])
-    apiman.validate_specification()
-    assert client.get(apiman.config["specification_url"]).json == spec
     assert client.get(apiman.config["swagger_url"]).status_code == 200
     assert client.get(apiman.config["redoc_url"]).status_code == 200
     # --
@@ -162,6 +160,16 @@ def test_app():
             ).status_code
             == 200
         )
+
+    spec = apiman.load_specification(app[0])
+    apiman.validate_specification()
+    apiman.generate_specification_file("test_bottle.yaml")
+    apiman.generate_specification_file("test_bottle.json")
+    assert os.path.exists("test_bottle.yaml")
+    assert os.path.exists("test_bottle.json")
+    os.remove("test_bottle.yaml")
+    os.remove("test_bottle.json")
+    assert client.get(apiman.config["specification_url"]).json == spec
 
 
 if __name__ == "__main__":
