@@ -76,7 +76,7 @@ class Apiman:
 
     def _load_specification(self) -> typing.Dict:
         if not self.loaded:
-            self.specification = self.expand_specification(self.specification)
+            # self.specification = self.expand_specification(self.specification)
             self.loaded = True
         return self.specification
 
@@ -146,10 +146,10 @@ class Apiman:
 
         schema: typing.Dict[str, typing.Dict[str, typing.Any]] = {
             "query": {},
-            "json": {},
             "header": {},
             "path": {},
             "cookie": {},
+            "json": {},
             "xml": {},
             "form": {},
         }
@@ -171,6 +171,7 @@ class Apiman:
         cookie_schema = copy.deepcopy(base_schema)
         form_schema = copy.deepcopy(base_schema)
         for d in self.specification["paths"][path][method].get("parameters", []):
+            d = self.expand_specification(d)
             if d.get("in") == "query":
                 _schema = query_schema
             elif d.get("in") == "header":
@@ -213,6 +214,7 @@ class Apiman:
                         d = self.specification["paths"][path][method]["requestBody"][
                             "content"
                         ][t]
+                        d = self.expand_specification(d)
                         schema[k] = d["schema"]
                     except KeyError:
                         pass
@@ -234,12 +236,13 @@ class Apiman:
         )
 
     def iter_request_schema(
-        self, request: typing.Any
+        self, request: typing.Any, ignore: typing.Sequence[str] = tuple()
     ) -> typing.Generator[typing.Tuple[str, typing.Dict], None, None]:
+        _ignore = set(ignore)
         schema = self.get_request_schema(request)
         body_schema_count = body_miss_count = 0
         for k, s in schema.items():
-            if not s:
+            if not s or k in _ignore:
                 continue
             if k in self.VALIDATE_REQUEST_CONTENT_TYPES:
                 body_schema_count += 1
@@ -255,16 +258,18 @@ class Apiman:
                 "Miss body content", "Miss body content", [], []
             )
 
-    def validate_request(self, request: typing.Any):
-        for k, s in self.iter_request_schema(request):
+    def validate_request(
+        self, request: typing.Any, ignore: typing.Sequence[str] = tuple()
+    ):
+        for k, s in self.iter_request_schema(request, ignore=ignore):
             data = self.get_request_data(request, k)
-            data = data.get(s["xml"]["name"], {}) if k == "xml" else data
             jsonschema_rs.JSONSchema(s).validate(data)
 
-    async def async_validate_request(self, request: typing.Any):
-        for k, s in self.iter_request_schema(request):
+    async def async_validate_request(
+        self, request: typing.Any, ignore: typing.Sequence[str] = tuple()
+    ):
+        for k, s in self.iter_request_schema(request, ignore=ignore):
             data = await self.async_get_request_data(request, k)
-            data = data.get(s["xml"]["name"], {}) if k == "xml" else data
             jsonschema_rs.JSONSchema(s).validate(data)
 
     def from_file(self, file_path: str) -> typing.Callable:
@@ -318,5 +323,6 @@ class Apiman:
         data = xmltodict.parse(content)
 
         for k in list(data.keys()):
-            data[k] = dict(data[k]) if isinstance(data[k], OrderedDict) else data[k]
+            data = dict(data[k]) if isinstance(data[k], OrderedDict) else data[k]
+            break
         return data
