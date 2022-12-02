@@ -228,7 +228,7 @@ class Apiman:
         return self.get_request_data(request, k)
 
     def get_request_schema(self, request: typing.Any) -> typing.Dict:
-        pass
+        raise NotImplementedError
 
     def get_request_content_type(self, request: typing.Any) -> str:
         return request.headers.get("Content-Type", "") or request.headers.get(
