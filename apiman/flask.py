@@ -33,7 +33,7 @@ class Apiman(_Apiman):
 
     def init_app(self, app: Flask):
         app.extensions["apiman"] = self
-        app.before_first_request(lambda: self.load_specification(app))  # type: ignore
+        app.before_request(lambda: None if self.load_specification(app) else None)  # type: ignore
 
         if self.swagger_template and self.swagger_url:
             swagger_html = Template(open(self.swagger_template).read()).render(
