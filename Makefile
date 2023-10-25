@@ -3,7 +3,7 @@ all: test
 version = `python -c 'import pkg_resources; print(pkg_resources.get_distribution("apiman").version)'`
 
 install:
-	poetry install
+	poetry update
 
 test: install
 	black . --check
