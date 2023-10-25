@@ -76,7 +76,6 @@ class Apiman:
 
     def _load_specification(self) -> typing.Dict:
         if not self.loaded:
-            # self.specification = self.expand_specification(self.specification)
             self.loaded = True
         return self.specification
 
@@ -296,7 +295,10 @@ class Apiman:
     def parse(self, func: typing.Callable) -> typing.Dict[str, typing.Any]:
         specification = {}
         if func.__doc__:
-            specification = yaml.safe_load(func.__doc__.split("---")[-1])
+            try:
+                specification = yaml.safe_load(func.__doc__.split("---")[-1])
+            except yaml.error.YAMLError:
+                specification = {}
             if not isinstance(specification, dict):
                 specification = {}
         if specification:
