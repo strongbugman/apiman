@@ -1,54 +1,93 @@
-[tool.poetry]
+[build-system]
+requires = ["setuptools>=77.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
 name = "apiman"
 version = "0.5.4"
-description = "Integrate api manual for your web project"
-license = "BSD"
+description = "Integrate OpenAPI documentation and request validation into Python web applications"
 readme = "README.md"
-repository = "https://github.com/strongbugman/apiman"
-authors = ["strongbugman <strongbugman@gmail.com>"]
-classifiers=[
+requires-python = ">=3.8"
+license = "BSD-3-Clause"
+authors = [
+    {name = "strongbugman", email = "strongbugman@gmail.com"}
+]
+classifiers = [
     "Environment :: Console",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-packages = [
-    { include = "apiman" },
+dependencies = [
+    "PyYAML>=6.0",
+    "Jinja2>=3.0.2",
+    "jsonschema-rs>=0.13.0,<0.20",
+    "xmltodict>=0.13.0",
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.7,<4"
-PyYAML = ">=6.0"
-Jinja2 = ">=3.0.2"
-jsonschema-rs = ">=0.13.0"
-xmltodict = ">=0.13.0"
+[project.urls]
+Homepage = "https://github.com/strongbugman/apiman"
+Documentation = "https://strongbugman.github.io/apiman/"
+Repository = "https://github.com/strongbugman/apiman"
+Issues = "https://github.com/strongbugman/apiman/issues"
 
-[tool.poetry.dev-dependencies]
-pytest = ">=6.2.5"
-pytest-cov = ">=3.0.0"
-uvicorn = ">=0.15.0"
-Flask = ">=2.0.2"
-starlette = ">=0.16.0"
-black = ">=21.10b0"
-isort = ">=5.10.0"
-flake8 = ">=4.0.1"
-mypy = ">=0.910"
-requests = ">=2.26.0"
-types-PyYAML = ">=6.0.0"
-codecov = ">=2.1.12"
-Django = ">=3.0.0"
-bottle = ">=0.12.0"
-WebTest = ">=3.0.0"
-tornado = ">=6.0"
-python-multipart = ">=0.0.5"
-falcon = ">=3.1.0"
-gunicorn = ">=20.1.0"
-httpx = ">=0.23.1"
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=3.0.0",
+    "uvicorn>=0.15.0",
+    "Flask>=2.0.2,<4",
+    "starlette>=0.16.0,<0.28",
+    "ruff>=0.1.0",
+    "mypy>=0.910",
+    "requests>=2.26.0",
+    "types-PyYAML>=6.0.0",
+    "Django>=3.2,<5",
+    "bottle>=0.12.0,<0.13",
+    "WebTest>=3.0.0",
+    "tornado>=6.0,<7",
+    "python-multipart>=0.0.5",
+    "falcon>=3.1.0,<4",
+    "gunicorn>=20.1.0",
+    "httpx>=0.23.1,<0.28",
+    "mkdocs-material>=8.2.3",
+]
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apiman*"]
+
+[tool.setuptools.package-data]
+apiman = ["static/*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "S", "B", "RUF"]
+ignore = [
+    "S101",  # assertions are used by tests and runtime validation
+    "B008",  # preserve public constructor defaults without changing API code
+    "B009",  # preserve package path lookup used by the existing implementation
+    "RUF012", # existing class-level constants are intentionally shared
+    "RUF034", # preserve the existing Flask before-request initialization hook
+    "UP028", # preserve the existing recursive Tornado generator implementation
+    "E501",  # formatter-compatible policy; preserve existing long schema strings
+    "UP006", # keep typing.List/Dict compatibility with Python 3.8
+    "UP007", # keep typing.Optional/Union compatibility with Python 3.8
+    "UP045", # keep typing.Optional/Union compatibility with Python 3.8
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+ignore_missing_imports = true
+disable_error_code = ["attr-defined", "arg-type"]

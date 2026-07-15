@@ -1,0 +1,28 @@
+site_name: APIMAN
+site_description: OpenAPI documentation and request validation for Python web frameworks
+site_url: https://strongbugman.github.io/apiman/
+repo_name: strongbugman/apiman
+repo_url: https://github.com/strongbugman/apiman
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Introduction: index.md
+  - Getting Started: getting-started.md
+  - Framework Integrations: frameworks.md
+  - Writing Specifications: specifications.md
+  - Request Validation: request-validation.md
+  - Development & Release: development.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences

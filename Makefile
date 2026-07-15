@@ -1,28 +1,41 @@
 all: test
 
-version = `python -c 'import pkg_resources; print(pkg_resources.get_distribution("apiman").version)'`
+version = $(shell python3 -c 'import re; print(re.search(r"version\s*=\s*\"([^\"]+)\"", open("pyproject.toml").read()).group(1))')
+
+.PHONY: all install env-info lint format test test-all docs docs-serve build clean
 
 install:
-	poetry update
+	uv sync --all-extras
 
-test: install
-	black . --check
-	isort -c apiman
-	flake8 .
-	mypy --ignore-missing-imports apiman
-	pytest --cov apiman --cov-report term-missing
+env-info:
+	@printf 'Project: %s\n' "$(CURDIR)"
+	@printf 'uv:      %s\n' "$$(command -v uv || printf 'not found')"
+	@printf 'Python:  %s\n' "$$(uv run python -c 'import sys; print(sys.executable)')"
+	@uv run python --version
 
-tag: install
-	git tag $(version) -m "Release of version $(version)"
+lint:
+	uv run ruff check apiman tests
+	uv run mypy apiman
 
-pypi_release: install
-	poetry build
-	poetry publish
+test: install lint
+	uv run pytest --cov apiman --cov-report term-missing tests/
 
-github_release:
-	git push && git push origin --tags
+test-all: install
+	uv run --with nox --with nox-uv nox
 
-release: tag github_release pypi_release
+# Formatting is intentionally explicit: it rewrites maintained Python files.
+format:
+	-uv run ruff check --fix apiman tests examples
+	uv run ruff format apiman tests examples
+
+docs: install
+	uv run mkdocs build --strict
+
+docs-serve: install
+	uv run mkdocs serve
+
+build: clean
+	uv build
 
 clean:
-	rm -rf .eggs *.egg-info dist build
+	rm -rf .eggs *.egg-info dist build site .nox .pytest_cache .coverage .ruff_cache .mypy_cache .venv
