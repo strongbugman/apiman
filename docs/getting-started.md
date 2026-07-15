@@ -2,6 +2,8 @@
 
 ## Install
 
+APIMAN supports Python 3.9 through 3.12.
+
 Install APIMAN and your chosen framework:
 
 ```bash

@@ -43,7 +43,7 @@ class Apiman(_Apiman):
                 self.swagger_url,
                 lambda: swagger_html,
             )
-        if self.redoc_template and self.redoc_template:
+        if self.redoc_template and self.redoc_url:
             redoc_html = Template(open(self.redoc_template).read()).render(self.config)
             self.route(app, self.redoc_url, lambda: redoc_html)
         if self.specification_url:
@@ -53,20 +53,24 @@ class Apiman(_Apiman):
                 lambda: self.load_specification(app),
             )
 
-    def get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> dict:
         return self._get_path_schema(
             self._covert_path_rule(request.route.rule), request.method.lower()
         )
 
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
-            return dict(request.query)
+            data = {}
+            for key in request.query:
+                values = request.query.getall(key)
+                data[key] = values if len(values) > 1 else values[0]
+            return data
         elif k == "path":
             return dict(request.url_args)
         elif k == "cookie":
             return dict(request.cookies)
         elif k == "header":
-            return dict(request.headers)
+            return {key.lower(): value for key, value in dict(request.headers).items()}
         elif k == "json":
             return request.json
         elif k == "form":
@@ -76,7 +80,7 @@ class Apiman(_Apiman):
         else:
             return {}
 
-    def load_specification(self, app: Bottle) -> typing.Dict:
+    def load_specification(self, app: Bottle) -> dict:
         if not self.loaded:
             for route in app.routes:
                 func = route.callback
@@ -97,7 +101,7 @@ class Apiman(_Apiman):
         app.route(url)(func)
 
     def add_path(
-        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+        self, path: str, specification: dict, method: typing.Optional[str] = None
     ):
         return super().add_path(
             self._covert_path_rule(path), specification, method=method

@@ -97,4 +97,20 @@ apiman.generate_specification_file("openapi.yml")
 apiman.generate_specification_file("openapi.json")
 ```
 
-`validate_specification` selects the bundled OpenAPI schema based on the root `openapi` or `swagger` version.
+`validate_specification` selects the bundled OpenAPI schema based on the root `openapi` or `swagger` version. APIMAN supports Swagger/OpenAPI 2.0, OpenAPI 3.0.x, and OpenAPI 3.1.x documents.
+
+## Refresh collected routes
+
+APIMAN caches collected route metadata and compiled path schemas. Programmatic changes made through `add_schema` or `add_path` invalidate those caches automatically.
+
+Use `reset()` when you need to clear cached route and validation state without collecting routes immediately:
+
+```python
+apiman.reset()
+```
+
+Use `reload(...)` after changing framework routes at runtime. It clears caches, then calls the adapter's `load_specification` method with the arguments you pass:
+
+```python
+apiman.reload(app)
+```

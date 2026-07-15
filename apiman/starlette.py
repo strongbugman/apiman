@@ -42,7 +42,7 @@ class Apiman(_Apiman):
                 self.config
             )
             self.route(app, self.swagger_url, lambda _: Response(swagger_html))
-        if self.redoc_template and self.redoc_template:
+        if self.redoc_template and self.redoc_url:
             redoc_html = Template(open(self.redoc_template).read()).render(self.config)
             self.route(app, self.redoc_url, lambda _: Response(redoc_html))
         if self.specification_url:
@@ -53,31 +53,49 @@ class Apiman(_Apiman):
             )
         self.router = app.router
 
-    def get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> dict:
         # get regex path, eg: "/api/cats/{id}/"
-        path = ""
+        route = request.scope.get("route")
+        path = getattr(route, "path", "") if route else ""
         for r in self.router.routes:
-            scope = r.matches(request.scope)[1]
-            if scope:
+            if path:
+                break
+            match, scope = r.matches(request.scope)
+            if match.value:
                 path = getattr(r, "path", "") or scope.get("path", "")
                 break
         return self._get_path_schema(path, request.method.lower())
 
+    def _cached_request_value(
+        self, request: Request, name: str, default: typing.Any
+    ) -> typing.Any:
+        return getattr(request, name, default)
+
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
-            return request.query_params._dict
+            data: dict[str, typing.Any] = {}
+            for key, value in request.query_params.multi_items():
+                if key in data:
+                    current = data[key]
+                    if isinstance(current, list):
+                        current.append(value)
+                    else:
+                        data[key] = [current, value]
+                else:
+                    data[key] = value
+            return data
         elif k == "path":
             return request.path_params
         elif k == "cookie":
             return request.cookies
         elif k == "header":
-            return dict(request.headers)
+            return {key.lower(): value for key, value in request.headers.items()}
         elif k == "json":
-            return getattr(request, "_json", {})
+            return self._cached_request_value(request, "_json", None)
         elif k == "form":
-            return dict(getattr(request, "_form", {}))
+            return dict(self._cached_request_value(request, "_form", {}) or {})
         elif k == "xml":
-            return self.xmltodict(getattr(request, "_body", ""))
+            return self.xmltodict(self._cached_request_value(request, "_body", ""))
         else:
             return {}
 
@@ -93,7 +111,7 @@ class Apiman(_Apiman):
 
     def load_specification(
         self, app: Starlette, mount: typing.Optional[Mount] = None, base_path=""
-    ) -> typing.Dict:
+    ) -> dict:
         if not self.loaded:
             for route in mount.routes if mount else app.routes:
                 if isinstance(route, Mount) and route.routes:

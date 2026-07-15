@@ -1,4 +1,3 @@
-import json
 import typing
 
 from jinja2 import Template
@@ -48,7 +47,7 @@ class Apiman(_Apiman):
                 self.swagger_url,
                 lambda self: self.write(swagger_html),
             )
-        if self.redoc_template and self.redoc_template:
+        if self.redoc_template and self.redoc_url:
             redoc_html = Template(open(self.redoc_template).read()).render(self.config)
             self.route(app, self.redoc_url, lambda self: self.write(redoc_html))
         if self.specification_url:
@@ -58,15 +57,17 @@ class Apiman(_Apiman):
                 lambda _self: _self.write(self.load_specification(app)),
             )
 
-    def get_request_schema(self, handler: RequestHandler) -> typing.Dict:
+    def get_request_schema(self, handler: RequestHandler) -> dict:
         self.load_specification(handler.application)
         path = ""
-        for rule in self._iter_rules(handler.application.default_router.rules):
-            if rule.matcher.match(handler.request) and hasattr(rule.matcher, "regex"):
-                path = rule.matcher.regex.pattern[:-1]  # type: ignore
+        for rule in self._iter_rules(self._application_rules(handler.application)):
+            rule_path = self._rule_path(rule)
+            if rule_path and rule.matcher.match(handler.request):
+                path = rule_path
                 break
         return self._get_path_schema(
-            self._covert_path_rule(path), handler.request.method.lower()  # type: ignore
+            self._covert_path_rule(path),
+            handler.request.method.lower(),  # type: ignore
         )
 
     def get_request_content_type(self, handler: RequestHandler) -> str:
@@ -77,7 +78,8 @@ class Apiman(_Apiman):
     def get_request_data(self, handler: RequestHandler, k: str) -> typing.Any:
         if k == "query":
             return {
-                k: v[0].decode() for k, v in handler.request.query_arguments.items()
+                k: [item.decode() for item in v] if len(v) > 1 else v[0].decode()
+                for k, v in handler.request.query_arguments.items()
             }
         elif k == "path":
             data = {}
@@ -91,23 +93,29 @@ class Apiman(_Apiman):
                 data[k] = v.value
             return data
         elif k == "header":
-            return dict(handler.request.headers)
+            return {
+                key.lower(): value
+                for key, value in dict(handler.request.headers).items()
+            }
         elif k == "json":
-            return json.loads(handler.request.body)
+            return self.json_loads(handler.request.body)
         elif k == "form":
-            return {k: v[0].decode() for k, v in handler.request.body_arguments.items()}
+            return {
+                k: [item.decode() for item in v] if len(v) > 1 else v[0].decode()
+                for k, v in handler.request.body_arguments.items()
+            }
         elif k == "xml":
             return self.xmltodict(handler.request.body)
         else:
             return {}
 
-    def load_specification(self, app: Application) -> typing.Dict:
+    def load_specification(self, app: Application) -> dict:
         if not self.loaded:
-            for rule in self._iter_rules(app.default_router.rules):
-                if not hasattr(rule.matcher, "regex"):
+            for rule in self._iter_rules(self._application_rules(app)):
+                path = self._rule_path(rule)
+                if not path:
                     continue
                 handler = rule.target
-                path = rule.matcher.regex.pattern[:-1]  # type: ignore
                 # from class
                 specification = self.parse(handler)
                 if specification:
@@ -129,7 +137,7 @@ class Apiman(_Apiman):
         )
 
     def add_path(
-        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+        self, path: str, specification: dict, method: typing.Optional[str] = None
     ):
         return super().add_path(
             self._covert_path_rule(path), specification, method=method
@@ -151,15 +159,25 @@ class Apiman(_Apiman):
 
         return "/".join(_subs)
 
-    def _iter_rules(
-        self, rules: typing.List[Rule]
-    ) -> typing.Generator[Rule, None, None]:
+    def _iter_rules(self, rules: list[Rule]) -> typing.Generator[Rule, None, None]:
         for rule in rules:
             if hasattr(rule.target, "rules"):
                 for r in self._iter_rules(rule.target.rules):
                     yield r
             else:
                 yield rule
+
+    def _application_rules(self, app: Application) -> list[Rule]:
+        try:
+            return list(app.default_router.rules)
+        except AttributeError:
+            return []
+
+    def _rule_path(self, rule: Rule) -> str:
+        matcher = getattr(rule, "matcher", None)
+        regex = getattr(matcher, "regex", None)
+        pattern = getattr(regex, "pattern", "")
+        return pattern[:-1] if pattern.endswith("$") else pattern
 
 
 Extension = Apiman

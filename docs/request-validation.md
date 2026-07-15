@@ -36,7 +36,15 @@ Body validation selects a schema from the request's `Content-Type` header:
 - `application/x-www-form-urlencoded`
 - `multipart/form-data`
 
-If the operation defines body schemas but the request content type matches none of them, validation fails with a missing-body-content error.
+Parameters such as `charset=utf-8` are ignored during matching. JSON and XML structured suffixes are treated semantically: for example, `application/problem+json` matches an `application/json` schema.
+
+If the operation defines body schemas but the request content type matches none of them, validation fails with a missing-body-content error. A required `requestBody` or OpenAPI 2 `body` parameter rejects a missing `None` body even when the body schema itself would otherwise allow any value.
+
+## Header names
+
+HTTP header parameter names are case-insensitive. A specification that requires `X-Token` accepts `x-token`, `X-Token`, or `X-TOKEN` from the framework request object.
+
+Query, cookie, and path parameter names remain case-sensitive because OpenAPI treats them as ordinary parameter names.
 
 ## Ignoring selected locations
 
@@ -48,7 +56,7 @@ apiman.validate_request(request, ignore=["header"])
 
 Use this narrowly: ignored data is not schema-validated.
 
-## String-valued transport parameters
+## Repeated values and transport strings
 
 Most frameworks expose query, header, and cookie values as strings. Their schemas should therefore use `type: string`. To represent numeric text, constrain the string with a pattern:
 
@@ -58,4 +66,15 @@ schema:
   pattern: '^\\d+$'
 ```
 
-Use a JSON body when native integer, boolean, array, or object values are required.
+Repeated query and form values are preserved as lists when the framework exposes them. APIMAN accepts a single value or repeated values for array schemas:
+
+```yaml
+schema:
+  type: array
+  items:
+    type: string
+```
+
+Repeated values for scalar schemas remain invalid. APIMAN does not parse comma-separated, space-separated, pipe-separated, or deep-object query serialization into nested structures; use repeated values for common arrays or parse those encodings before validation.
+
+Use a JSON body when native integer, boolean, object, or nested array values are required.

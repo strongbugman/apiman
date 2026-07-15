@@ -94,7 +94,7 @@ jobs:
 
   release:
     name: Auto-Tag and Publish
-    needs: [test, docs, deploy-docs]
+    needs: [test, docs]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -117,42 +117,101 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Check version and create tag
-        id: auto_tag
+      - name: Inspect release state
+        id: release_state
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           VERSION=$(python -c "import re; print(re.search(r'version\s*=\s*\"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
           TAG="$VERSION"
           echo "Detected version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
           git fetch --tags
           if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists; skipping release."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            tag_exists=true
+          else
+            tag_exists=false
+          fi
+          echo "tag_exists=$tag_exists" >> "$GITHUB_OUTPUT"
+
+          pypi_exists=$(
+            python - "$VERSION" <<'PY'
+          import sys
+          import urllib.error
+          import urllib.request
+
+          version = sys.argv[1]
+          url = f"https://pypi.org/pypi/apiman/{version}/json"
+          try:
+              with urllib.request.urlopen(url, timeout=20):
+                  print("true")
+          except urllib.error.HTTPError as exc:
+              if exc.code == 404:
+                  print("false")
+              else:
+                  raise
+          PY
+          )
+          echo "pypi_exists=$pypi_exists" >> "$GITHUB_OUTPUT"
+
+          if release_assets_count=$(gh release view "$TAG" --json assets --jq '.assets | length' 2>/dev/null); then
+            github_release_exists=true
+            if [ "$release_assets_count" -gt 0 ]; then
+              github_release_has_artifacts=true
+            else
+              github_release_has_artifacts=false
+            fi
+          else
+            github_release_exists=false
+            github_release_has_artifacts=false
+          fi
+          echo "github_release_exists=$github_release_exists" >> "$GITHUB_OUTPUT"
+          echo "github_release_has_artifacts=$github_release_has_artifacts" >> "$GITHUB_OUTPUT"
+
+      - name: Decide release actions
+        id: release_plan
+        run: |
+          python scripts/release_decision.py \
+            --pypi-exists "${{ steps.release_state.outputs.pypi_exists }}" \
+            --tag-exists "${{ steps.release_state.outputs.tag_exists }}" \
+            --github-release-exists "${{ steps.release_state.outputs.github_release_exists }}" \
+            --github-release-has-artifacts "${{ steps.release_state.outputs.github_release_has_artifacts }}" \
+            >> "$GITHUB_OUTPUT"
+
+      - name: Build package
+        if: steps.release_plan.outputs.build == 'true'
+        run: uv build
+
+      - name: Publish package to PyPI
+        if: steps.release_plan.outputs.publish == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Ensure git tag
+        if: steps.release_plan.outputs.ensure_tag == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.release_state.outputs.tag }}"
+          git fetch --tags
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build package
-        if: steps.auto_tag.outputs.should_release == 'true'
-        run: uv build
-
-      - name: Publish package to PyPI
-        if: steps.auto_tag.outputs.should_release == 'true'
-        uses: pypa/gh-action-pypi-publish@release/v1
-
-      - name: Create GitHub Release
-        if: steps.auto_tag.outputs.should_release == 'true'
+      - name: Ensure GitHub Release
+        if: steps.release_plan.outputs.ensure_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.auto_tag.outputs.tag }}
-          name: Release ${{ steps.auto_tag.outputs.tag }}
+          tag_name: ${{ steps.release_state.outputs.tag }}
+          name: Release ${{ steps.release_state.outputs.tag }}
           files: dist/*
           draft: false
           prerelease: false

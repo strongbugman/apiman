@@ -6,7 +6,7 @@ APIMAN connects OpenAPI documentation and runtime request validation to existing
 
 ## What it provides
 
-- OpenAPI 2 and OpenAPI 3 specification collection
+- OpenAPI 2.0, 3.0.x, and 3.1.x specification collection and validation
 - Swagger UI, ReDoc, and raw specification endpoints
 - Starlette, Flask, Django, Bottle, Tornado, and Falcon adapters
 - Documentation loaded from Python docstrings, YAML, dictionaries, or files
@@ -22,6 +22,8 @@ APIMAN connects OpenAPI documentation and runtime request validation to existing
 | `/apiman/redoc/` | ReDoc UI |
 
 All three endpoints are configurable when constructing `Apiman`.
+
+Swagger UI and ReDoc are served from pinned jsDelivr CDN versions by the default templates. Replace the templates if your deployment requires fully local browser assets or stricter CSP rules.
 
 ## Next steps
 

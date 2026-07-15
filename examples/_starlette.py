@@ -1,11 +1,12 @@
-"""OpenAPI2(Swagger) with Starlette
-"""
+"""OpenAPI2(Swagger) with Starlette"""
+
 import pytest
+import anyio
+import httpx
 from starlette.applications import Starlette
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.testclient import TestClient
 from uvicorn import run
 
 from apiman.starlette import Apiman
@@ -150,38 +151,42 @@ app.mount("/", sub_app)
 
 
 def test_app():
-    client = TestClient(app)
+    anyio.run(_test_app)
+
+
+async def _test_app():
+    transport = httpx.ASGITransport(app=app)
     spec = apiman.load_specification(app)
     apiman.validate_specification()
-    assert client.get(apiman.config["specification_url"]).json() == spec
-    assert client.get(apiman.config["swagger_url"]).status_code == 200
-    assert client.get(apiman.config["redoc_url"]).status_code == 200
-    # --
-    with pytest.raises(Exception):
-        client.get("/cat/1/")
-    with pytest.raises(Exception):
-        client.get("/cat/1/?test_param2=test")
-    assert (
-        client.get(
-            "/cat/1/?test_param2=test", headers={"test_param1": "test"}
-        ).status_code
-        == 200
-    )
-    # --
-    with pytest.raises(Exception):
-        client.post("/cats/", json={"name": "test", "id": 3})
-    assert (
-        client.post(
-            "/cats_form/",
-            data={"name": "test", "id": "3", "age": "4"},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        ).status_code
-        == 200
-    )
-    assert (
-        client.post("/cats/", json={"name": "test", "id": 3, "age": 4}).status_code
-        == 200
-    )
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        assert (await client.get(apiman.config["specification_url"])).json() == spec
+        assert (await client.get(apiman.config["swagger_url"])).status_code == 200
+        assert (await client.get(apiman.config["redoc_url"])).status_code == 200
+        # --
+        with pytest.raises(Exception):
+            await client.get("/cat/1/")
+        with pytest.raises(Exception):
+            await client.get("/cat/1/?test_param2=test")
+        assert (
+            await client.get(
+                "/cat/1/?test_param2=test", headers={"test_param1": "test"}
+            )
+        ).status_code == 200
+        # --
+        with pytest.raises(Exception):
+            await client.post("/cats/", json={"name": "test", "id": 3})
+        assert (
+            await client.post(
+                "/cats_form/",
+                data={"name": "test", "id": "3", "age": "4"},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+        ).status_code == 200
+        assert (
+            await client.post("/cats/", json={"name": "test", "id": 3, "age": 4})
+        ).status_code == 200
 
 
 if __name__ == "__main__":

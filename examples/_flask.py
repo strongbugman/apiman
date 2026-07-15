@@ -1,5 +1,5 @@
-"""OpenAPI3 with flask
-"""
+"""OpenAPI3 with flask"""
+
 import pytest
 from flask import Flask, Response, jsonify, request
 from flask.views import MethodView

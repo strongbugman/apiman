@@ -45,7 +45,7 @@ class Apiman(_Apiman):
                 "swagger_ui",
                 lambda: Response(swagger_html),
             )
-        if self.redoc_template and self.redoc_template:
+        if self.redoc_template and self.redoc_url:
             redoc_html = Template(open(self.redoc_template).read()).render(self.config)
             self.route(app, self.redoc_url, "redoc_ui", lambda: Response(redoc_html))
         if self.specification_url:
@@ -56,7 +56,7 @@ class Apiman(_Apiman):
                 lambda: jsonify(self.load_specification(app)),
             )
 
-    def get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> dict:
         if request.url_rule:
             path = self._covert_path_rule(request.url_rule.rule)
         else:
@@ -65,13 +65,16 @@ class Apiman(_Apiman):
 
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
-            return dict(request.args)
+            return {
+                key: values if len(values) > 1 else values[0]
+                for key, values in request.args.lists()
+            }
         elif k == "path":
             return request.view_args or {}
         elif k == "cookie":
             return dict(request.cookies)
         elif k == "header":
-            return dict(request.headers.items())
+            return {key.lower(): value for key, value in request.headers.items()}
         elif k == "json":
             return request.json
         elif k == "form":
@@ -81,7 +84,7 @@ class Apiman(_Apiman):
         else:
             return {}
 
-    def load_specification(self, app: Flask) -> typing.Dict:
+    def load_specification(self, app: Flask) -> dict:
         if not self.loaded:
             for route in app.url_map.iter_rules():
                 func = app.view_functions[route.endpoint]
@@ -117,7 +120,7 @@ class Apiman(_Apiman):
         app.route(url, endpoint=endpoint, methods=["GET"])(func)
 
     def add_path(
-        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+        self, path: str, specification: dict, method: typing.Optional[str] = None
     ):
         return super().add_path(
             self._covert_path_rule(path), specification, method=method

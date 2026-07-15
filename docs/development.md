@@ -43,11 +43,15 @@ The `Test and Release` workflow runs on pushes and pull requests targeting `mast
 
 1. Test Python 3.9, 3.10, 3.11, and 3.12.
 2. Upload test coverage to Codecov.
-3. Build the documentation in strict mode; pushes to `master` publish it to GitHub Pages.
-4. On a successful push to `master`, compare the `pyproject.toml` version with existing tags.
-5. If the version tag is new, build distributions, publish through PyPI Trusted Publishing (OIDC), and create a GitHub Release.
+3. Build the documentation in strict mode; pushes to `master` publish it to GitHub Pages in a separate `deploy-docs` job.
+4. On a successful push to `master`, inspect PyPI, the unprefixed git tag, and the GitHub Release independently for the `pyproject.toml` version.
+5. Build and publish distributions only when the PyPI version is absent. Publication uses PyPI Trusted Publishing (OIDC), not a static token.
+6. Ensure the unprefixed tag exists after a successful or previous PyPI publication.
+7. Ensure a GitHub Release exists and has distribution artifacts.
 
 APIMAN retains its existing unprefixed release-tag convention, such as `0.5.4`.
+
+Package release depends on the test and documentation build jobs, but not on GitHub Pages deployment. A Pages deployment failure must not block PyPI publication or release recovery.
 
 !!! warning "PyPI configuration"
     The GitHub repository must be registered as a Trusted Publisher for the `apiman` project on PyPI before OIDC publishing can succeed.
@@ -59,4 +63,4 @@ The project version has one source of truth: `pyproject.toml`.
 1. Update `[project].version` in `pyproject.toml`.
 2. Run `make test`, `make docs`, and `make build`.
 3. Commit and merge to `master`.
-4. The workflow creates the matching tag and release only after every required job passes.
+4. The workflow recovers missing release pieces on rerun: PyPI, tag, and GitHub Release state are checked separately instead of treating an existing tag as proof that publication succeeded.

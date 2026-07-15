@@ -1,4 +1,3 @@
-import json
 import os
 import typing
 
@@ -61,9 +60,12 @@ class Apiman(_Apiman):
             redoc_template=redoc_template,
             template=template,
         )
-        self.views: typing.Dict[str, typing.Callable] = {}
+        self.views: dict[str, typing.Callable] = {}
+        self._django_initialized = False
 
     def init_app(self):
+        if not settings.configured:
+            return
         for key in (
             "title",
             "specification_url",
@@ -85,7 +87,7 @@ class Apiman(_Apiman):
                 self.swagger_url,
                 lambda: HttpResponse(swagger_html),
             )
-        if self.redoc_template and self.redoc_template:
+        if self.redoc_template and self.redoc_url:
             redoc_html = Template(open(self.redoc_template).read()).render(self.config)
             self.route(self.redoc_url, lambda: HttpResponse(redoc_html))
         if self.specification_url:
@@ -93,8 +95,11 @@ class Apiman(_Apiman):
                 self.specification_url,
                 lambda: JsonResponse(self.load_specification(None)),
             )
+        self._django_initialized = True
 
-    def get_request_schema(self, request: HttpRequest) -> typing.Dict:
+    def get_request_schema(self, request: HttpRequest) -> dict:
+        if not request.resolver_match:
+            return {}
         return self._get_path_schema(
             "/" + self._covert_path_rule(request.resolver_match.route),
             request.method.lower(),
@@ -102,17 +107,23 @@ class Apiman(_Apiman):
 
     def get_request_data(self, request: HttpRequest, k: str) -> typing.Any:
         if k == "query":
-            return dict(request.GET.items())
+            return {
+                key: values if len(values) > 1 else values[0]
+                for key, values in request.GET.lists()
+            }
         elif k == "path":
             return dict(request.resolver_match.kwargs)
         elif k == "cookie":
             return dict(request.COOKIES)
         elif k == "header":
-            return dict(request.headers)
+            return {key.lower(): value for key, value in request.headers.items()}
         elif k == "json":
-            return json.loads(request.body)
+            return self.json_loads(request.body)
         elif k == "form":
-            return dict(request.POST)
+            return {
+                key: values if len(values) > 1 else values[0]
+                for key, values in request.POST.lists()
+            }
         elif k == "xml":
             return self.xmltodict(request.body)
         else:
@@ -122,12 +133,13 @@ class Apiman(_Apiman):
         if hasattr(pattern, "url_patterns"):
             for p in pattern.url_patterns:
                 self._load_pattern_specification(
-                    p, base_path=base_path + getattr(pattern.pattern, "_route", "")
+                    p, base_path=base_path + self._route_pattern(pattern)
                 )
         else:
-            if not hasattr(pattern.pattern, "_route"):
+            route_pattern = self._route_pattern(pattern)
+            if not route_pattern:
                 return
-            path = base_path + pattern.pattern._route
+            path = base_path + route_pattern
             func = pattern.callback
             if hasattr(func, "view_class"):  # view class
                 # from class
@@ -146,8 +158,13 @@ class Apiman(_Apiman):
                     set(specification.keys()) & self.HTTP_METHODS
                 ):  # multi method description
                     self.add_path(path, specification)
+                elif specification:
+                    for method in self.HTTP_METHODS:
+                        self.add_path(path, specification, method=method)
 
-    def load_specification(self, _) -> typing.Dict:
+    def load_specification(self, _) -> dict:
+        if not settings.configured:
+            return self.specification
         if not self.loaded:
             self._load_pattern_specification(get_resolver())
             return self._load_specification()
@@ -158,7 +175,7 @@ class Apiman(_Apiman):
         self.views[url] = func
 
     def add_path(
-        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+        self, path: str, specification: dict, method: typing.Optional[str] = None
     ):
         return super().add_path(
             self._covert_path_rule(path), specification, method=method
@@ -175,9 +192,16 @@ class Apiman(_Apiman):
 
         return "/".join(_subs)
 
+    def _route_pattern(self, pattern) -> str:
+        route_pattern = getattr(getattr(pattern, "pattern", None), "_route", None)
+        if route_pattern is not None:
+            return route_pattern
+        return str(getattr(pattern, "pattern", ""))
+
 
 apiman = Apiman()
-apiman.init_app()
+if settings.configured:
+    apiman.init_app()
 
 
 class Middleware:
@@ -185,6 +209,8 @@ class Middleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest):
+        if not apiman._django_initialized:
+            apiman.init_app()
         apiman.load_specification(None)
         url = request.get_full_path()
         if url in apiman.views:

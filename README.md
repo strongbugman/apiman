@@ -11,7 +11,7 @@
 ## Features
 
 - Integrations for **Starlette, Flask, Django, Bottle, Tornado, and Falcon**
-- OpenAPI 2 (Swagger) and OpenAPI 3 specification support
+- OpenAPI 2.0, OpenAPI 3.0.x, and OpenAPI 3.1.x specification validation
 - Built-in Swagger UI and ReDoc endpoints
 - Specifications from docstrings, YAML strings, dictionaries, YAML files, or JSON files
 - Validation for query, header, cookie, path, JSON, XML, and form request data
@@ -81,7 +81,7 @@ make docs
 
 ## Development
 
-This project uses [uv](https://docs.astral.sh/uv/) and Ruff:
+APIMAN supports Python 3.9 through 3.12. This project uses [uv](https://docs.astral.sh/uv/) and Ruff:
 
 ```bash
 make install   # create/sync .venv
@@ -93,6 +93,16 @@ make build     # sdist and wheel
 ```
 
 `make format` rewrites Python files and is intentionally separate from the read-only quality checks.
+
+## Compatibility Notes
+
+APIMAN validates assembled specifications with bundled OpenAPI 2.0, 3.0.x, and 3.1.x schemas. Header parameter names are matched case-insensitively; query, cookie, and path parameter names remain case-sensitive.
+
+Request validation supports JSON, XML, form, query, header, cookie, and path inputs. Repeated query and form values are accepted for array schemas. Repeated values for scalar schemas remain invalid.
+
+Use `apiman.reset()` to clear collected route/schema caches and `apiman.reload(...)` to clear caches and collect routes again through the active framework adapter.
+
+The built-in Swagger UI and ReDoc templates use pinned jsDelivr CDN versions, not `@latest`. Serving those endpoints requires browser access to jsDelivr unless you customize the templates to serve local assets.
 
 ## License
 

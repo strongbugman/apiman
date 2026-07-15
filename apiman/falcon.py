@@ -54,16 +54,18 @@ class Apiman(_Apiman):
                     setattr(res, "content_type", "html"),  # type: ignore
                 ),
             )
-        if self.redoc_template and self.redoc_template:
+        if self.redoc_template and self.redoc_url:
             redoc_html = Template(open(self.redoc_template).read()).render(self.config)
-            self.route(
-                app,
-                self.redoc_url,
-                lambda req, res: (
-                    setattr(res, "text", redoc_html),  # type: ignore
-                    setattr(res, "content_type", "html"),  # type: ignore
+            (
+                self.route(
+                    app,
+                    self.redoc_url,
+                    lambda req, res: (
+                        setattr(res, "text", redoc_html),  # type: ignore
+                        setattr(res, "content_type", "html"),  # type: ignore
+                    ),
                 ),
-            ),
+            )
         if self.specification_url:
             self.route(
                 app,
@@ -74,7 +76,7 @@ class Apiman(_Apiman):
                 ),
             )
 
-    def get_request_schema(self, request: Request) -> typing.Dict:
+    def get_request_schema(self, request: Request) -> dict:
         self.load_specification(None)
         return self._get_path_schema(
             self._covert_path_rule(request.uri_template), request.method.lower()
@@ -84,16 +86,13 @@ class Apiman(_Apiman):
         if k == "query":
             return request.params
         elif k == "path":
-            return self.app._get_responder(request)[1]
+            return self._get_request_path_params(request)
         elif k == "cookie":
             return request.cookies
         elif k == "header":
-            return request.headers
+            return {key.lower(): value for key, value in request.headers.items()}
         elif k in ("json", "form", "xml"):
-            if isinstance(request, ASGIRequest):
-                return request._media
-            else:
-                return request.media
+            return self._get_request_media(request)
         else:
             return {}
 
@@ -102,7 +101,25 @@ class Apiman(_Apiman):
             await request.get_media()
         return self.get_request_data(request, k)
 
-    def _load_node_specification(self, nodes: typing.List[CompiledRouterNode]):
+    def _get_request_path_params(self, request: Request) -> dict[str, str]:
+        try:
+            _, params, *_ = self.app._get_responder(request)
+        except (AttributeError, TypeError, ValueError):
+            return {}
+        return dict(params)
+
+    def _get_request_media(self, request: Request) -> typing.Any:
+        if isinstance(request, ASGIRequest):
+            return getattr(request, "_media", None)
+        return request.media
+
+    def _iter_router_roots(self) -> list[CompiledRouterNode]:
+        try:
+            return list(self.app._router._roots)
+        except AttributeError:
+            return []
+
+    def _load_node_specification(self, nodes: list[CompiledRouterNode]):
         for n in nodes:
             if n.resource:
                 # from class
@@ -118,9 +135,9 @@ class Apiman(_Apiman):
                             self.add_path(n.uri_template, specification, method=method)
             self._load_node_specification(n.children)
 
-    def load_specification(self, _) -> typing.Dict:
+    def load_specification(self, _) -> dict:
         if not self.loaded:
-            self._load_node_specification(self.app._router._roots)
+            self._load_node_specification(self._iter_router_roots())
             return self._load_specification()
         else:
             return self.specification
@@ -137,7 +154,7 @@ class Apiman(_Apiman):
         app.add_route(url, ASGIResource() if isinstance(app, ASGIApp) else Resource())
 
     def add_path(
-        self, path: str, specification: typing.Dict, method: typing.Optional[str] = None
+        self, path: str, specification: dict, method: typing.Optional[str] = None
     ):
         return super().add_path(
             self._covert_path_rule(path), specification, method=method

@@ -21,7 +21,7 @@ class MyTestCase(TestCase):
             "/fishes/",
             json.dumps({"id": 2, "name": "w", "age": 0}),
             content_type="application/json",
-            **{"HTTP_X-Theader": "t"}
+            **{"HTTP_X-Theader": "t"},
         )
 
         # query
@@ -40,7 +40,7 @@ class MyTestCase(TestCase):
                 "/fishes/",
                 json.dumps({"id": 2, "name": "w", "age": "0"}),
                 content_type="application/json",
-                **{"HTTP_X-Theader": "t"}
+                **{"HTTP_X-Theader": "t"},
             )
         # form
         with self.assertRaises(ValidationError):
@@ -48,7 +48,7 @@ class MyTestCase(TestCase):
                 "/fishes/",
                 "id=2&name=w&age=0",
                 content_type="application/x-www-form-urlencoded",
-                **{"HTTP_X-Theader": "t"}
+                **{"HTTP_X-Theader": "t"},
             )
         # xml
         self.assertEqual(
@@ -56,7 +56,7 @@ class MyTestCase(TestCase):
                 "/fishes/",
                 """<?xml version="1.0" encoding="UTF-8"?> <data> <age>0</age> <id>0</id> <name>string</name> </data>""",
                 content_type="application/xml",
-                **{"HTTP_X-Theader": "t"}
+                **{"HTTP_X-Theader": "t"},
             ).status_code,
             200,
         )
@@ -65,7 +65,7 @@ class MyTestCase(TestCase):
                 "/fishes/",
                 """<?xml version="1.0" encoding="UTF-8"?> <data> <id>0</id> <name>string</name> </data>""",
                 content_type="application/xml",
-                **{"HTTP_X-Theader": "t"}
+                **{"HTTP_X-Theader": "t"},
             )
         # cookie
         with self.assertRaises(ValidationError):
@@ -74,5 +74,5 @@ class MyTestCase(TestCase):
                 "/fishes/",
                 json.dumps({"id": 2, "name": "w", "age": 0}),
                 content_type="application/json",
-                **{"HTTP_X-Theader": "t"}
+                **{"HTTP_X-Theader": "t"},
             )
