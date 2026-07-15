@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apiman"
-version = "0.5.4"
+version = "0.5.5"
 description = "Integrate OpenAPI documentation and request validation into Python web applications"
 readme = "README.md"
 requires-python = ">=3.9"
