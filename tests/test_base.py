@@ -283,7 +283,7 @@ def test_required_request_body_rejects_missing_body_even_when_schema_allows_empt
                 "/items",
                 method="POST",
                 headers={"content-type": "application/json"},
-                data={"json": None},
+                data={},
             )
         )
     apiman.validate_request(
@@ -378,3 +378,329 @@ def test_repeated_scalar_query_values_remain_invalid() -> None:
         apiman.validate_request(
             Request("/search", data={"query": {"tag": ["red", "blue"]}})
         )
+
+
+def test_optional_request_body_is_not_enforced_when_content_type_is_missing() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": False,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"title": {"type": "string"}},
+                            "required": ["title"],
+                        }
+                    }
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    # No content-type/body at all: an optional body must not be enforced.
+    apiman.validate_request(Request("/items", method="POST"))
+
+
+def test_required_request_body_still_raises_miss_body_content() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {"type": "object"},
+                    }
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    with pytest.raises(jsonschema_rs.ValidationError):
+        apiman.validate_request(Request("/items", method="POST"))
+
+
+def test_required_body_with_array_property_accepts_single_repeated_value() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/x-www-form-urlencoded": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "tags": {"type": "array", "items": {"type": "string"}}
+                            },
+                        },
+                    }
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/x-www-form-urlencoded"},
+            data={"form": {"tags": "red"}},
+        )
+    )
+
+
+def test_same_location_media_types_do_not_overwrite_each_other() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"a": {"type": "string"}},
+                            "required": ["a"],
+                            "additionalProperties": False,
+                        }
+                    },
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"b": {"type": "string"}},
+                            "required": ["b"],
+                            "additionalProperties": False,
+                        }
+                    },
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/json"},
+            data={"json": {"a": "x"}},
+        )
+    )
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/problem+json"},
+            data={"json": {"b": "y"}},
+        )
+    )
+
+    with pytest.raises(jsonschema_rs.ValidationError):
+        apiman.validate_request(
+            Request(
+                "/items",
+                method="POST",
+                headers={"content-type": "application/json"},
+                data={"json": {"b": "wrong media schema"}},
+            )
+        )
+    with pytest.raises(jsonschema_rs.ValidationError):
+        apiman.validate_request(
+            Request(
+                "/items",
+                method="POST",
+                headers={"content-type": "application/problem+json"},
+                data={"json": {"a": "wrong media schema"}},
+            )
+        )
+
+
+def test_xml_structured_suffix_media_type_matches_declared_xml_body() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/xml": {
+                        "schema": {"type": "object"},
+                    }
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/atom+xml"},
+            data={"xml": {}},
+        )
+    )
+
+
+def test_operation_level_parameter_overrides_path_level_required() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "parameters": [
+                {
+                    "name": "q",
+                    "in": "query",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ],
+            "get": {
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "responses": {"200": {"description": "OK"}},
+            },
+        },
+    )
+
+    # Operation-level required=False must override the path-level required=True.
+    apiman.validate_request(Request("/items", data={"query": {}}))
+
+
+def test_header_parameter_override_identity_is_case_insensitive() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "parameters": [
+                {
+                    "name": "X-Token",
+                    "in": "header",
+                    "required": True,
+                    "schema": {"type": "string"},
+                }
+            ],
+            "get": {
+                "parameters": [
+                    {
+                        "name": "x-token",
+                        "in": "header",
+                        "required": False,
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "responses": {"200": {"description": "OK"}},
+            },
+        },
+    )
+
+    apiman.validate_request(Request("/items", data={"header": {}}))
+
+
+def test_optional_body_with_content_type_but_no_payload_is_not_validated() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": False,
+                "content": {
+                    "application/json": {
+                        "schema": {"type": "object"},
+                    }
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/json"},
+        )
+    )
+
+
+def test_required_present_json_null_is_allowed_by_nullable_openapi31_schema() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/json": {
+                        "schema": {"type": ["object", "null"]},
+                    }
+                },
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/json"},
+            data={"json": None},
+        )
+    )
+
+
+def test_required_body_without_a_media_schema_still_requires_payload() -> None:
+    apiman = Apiman()
+    apiman.add_path(
+        "/items",
+        {
+            "requestBody": {
+                "required": True,
+                "content": {"application/json": {}},
+            },
+            "responses": {"200": {"description": "OK"}},
+        },
+        method="post",
+    )
+
+    with pytest.raises(jsonschema_rs.ValidationError):
+        apiman.validate_request(
+            Request(
+                "/items",
+                method="POST",
+                headers={"content-type": "application/json"},
+            )
+        )
+
+    apiman.validate_request(
+        Request(
+            "/items",
+            method="POST",
+            headers={"content-type": "application/json"},
+            data={"json": None},
+        )
+    )

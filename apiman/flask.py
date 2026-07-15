@@ -32,6 +32,7 @@ class Apiman(_Apiman):
     """
 
     def init_app(self, app: Flask):
+        self._app = app
         app.extensions["apiman"] = self
         app.before_request(lambda: None if self.load_specification(app) else None)  # type: ignore
 
@@ -65,6 +66,7 @@ class Apiman(_Apiman):
 
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
+            # e.g. tag=red&tag=blue -> {"tag": ["red", "blue"]}
             return {
                 key: values if len(values) > 1 else values[0]
                 for key, values in request.args.lists()
@@ -78,13 +80,25 @@ class Apiman(_Apiman):
         elif k == "json":
             return request.json
         elif k == "form":
-            return dict(request.form)
+            # e.g. [("tag", ["red", "blue"])]
+            #   -> {"tag": ["red", "blue"]}
+            return {
+                key: values if len(values) > 1 else values[0]
+                for key, values in request.form.lists()
+            }
         elif k == "xml":
             return self.xmltodict(request.data)
         else:
             return {}
 
-    def load_specification(self, app: Flask) -> dict:
+    def has_request_body(self, request: Request, location: str) -> bool:
+        _ = location
+        if request.content_length is not None:
+            return request.content_length > 0
+        return bool(request.get_data(cache=True))
+
+    def load_specification(self, app: typing.Optional[Flask] = None) -> dict:
+        app = app or self._app
         if not self.loaded:
             for route in app.url_map.iter_rules():
                 func = app.view_functions[route.endpoint]

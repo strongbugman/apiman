@@ -32,6 +32,7 @@ class Apiman(_Apiman):
     """
 
     def init_app(self, app: Bottle):
+        self._app = app
         app.add_hook("before_request", lambda: self.load_specification(app))
 
         if self.swagger_template and self.swagger_url:
@@ -61,6 +62,7 @@ class Apiman(_Apiman):
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
             data = {}
+            # e.g. tag=red&tag=blue -> {"tag": ["red", "blue"]}
             for key in request.query:
                 values = request.query.getall(key)
                 data[key] = values if len(values) > 1 else values[0]
@@ -74,13 +76,25 @@ class Apiman(_Apiman):
         elif k == "json":
             return request.json
         elif k == "form":
-            return dict(request.forms)
+            data = {}
+            # getall() preserves repeated fields instead of dropping all but
+            # one. e.g. tag=red&tag=blue -> {"tag": ["red", "blue"]}
+            for key in request.forms:
+                values = request.forms.getall(key)
+                data[key] = values if len(values) > 1 else values[0]
+            return data
         elif k == "xml":
             return self.xmltodict(request.body)
         else:
             return {}
 
-    def load_specification(self, app: Bottle) -> dict:
+    def has_request_body(self, request: Request, location: str) -> bool:
+        _ = location
+        content_length = request.content_length
+        return content_length is not None and content_length > 0
+
+    def load_specification(self, app: typing.Optional[Bottle] = None) -> dict:
+        app = app or self._app
         if not self.loaded:
             for route in app.routes:
                 func = route.callback

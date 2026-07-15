@@ -101,7 +101,10 @@ class Apiman(_Apiman):
         if not request.resolver_match:
             return {}
         return self._get_path_schema(
-            "/" + self._covert_path_rule(request.resolver_match.route),
+            "/"
+            + self._covert_path_rule(
+                self._normalize_route(request.resolver_match.route)
+            ),
             request.method.lower(),
         )
 
@@ -128,6 +131,16 @@ class Apiman(_Apiman):
             return self.xmltodict(request.body)
         else:
             return {}
+
+    def has_request_body(self, request: HttpRequest, location: str) -> bool:
+        _ = location
+        content_length = request.META.get("CONTENT_LENGTH")
+        if content_length:
+            try:
+                return int(content_length) > 0
+            except ValueError:
+                pass
+        return bool(getattr(request, "_body", b""))
 
     def _load_pattern_specification(self, pattern, base_path: str = "/"):
         if hasattr(pattern, "url_patterns"):
@@ -162,11 +175,18 @@ class Apiman(_Apiman):
                     for method in self.HTTP_METHODS:
                         self.add_path(path, specification, method=method)
 
-    def load_specification(self, _) -> dict:
+    def load_specification(self, _: typing.Any = None) -> dict:
         if not settings.configured:
             return self.specification
         if not self.loaded:
-            self._load_pattern_specification(get_resolver())
+            # get_resolver() wraps the whole URLconf in an implicit root
+            # URLResolver whose own pattern ("^/") is Django-internal
+            # boilerplate, not a real path segment -- Django's own
+            # resolver_match.route never includes it. Walk its direct
+            # url_patterns instead of the resolver itself so that
+            # contribution is never added to any registered path.
+            for p in get_resolver().url_patterns:
+                self._load_pattern_specification(p)
             return self._load_specification()
         else:
             return self.specification
@@ -196,7 +216,16 @@ class Apiman(_Apiman):
         route_pattern = getattr(getattr(pattern, "pattern", None), "_route", None)
         if route_pattern is not None:
             return route_pattern
-        return str(getattr(pattern, "pattern", ""))
+        # re_path()-based RegexPattern has no "_route"; its raw regex text
+        # keeps its own leading "^", which Django's own route-joining
+        # (URLResolver._join_route) strips from each nested child before
+        # concatenating. Mirror that here so registered paths match what
+        # request.resolver_match.route actually looks like at request time.
+        return self._normalize_route(str(getattr(pattern, "pattern", "")))
+
+    def _normalize_route(self, route: str) -> str:
+        # e.g. "^api/items/(?P<id>\\d+)/$" -> "api/items/(?P<id>\\d+)/$"
+        return route[1:] if route.startswith("^") else route
 
 
 apiman = Apiman()

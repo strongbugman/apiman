@@ -82,6 +82,15 @@ class Apiman(_Apiman):
             self._covert_path_rule(request.uri_template), request.method.lower()
         )
 
+    def get_request_content_type(self, request: Request) -> str:
+        # Falcon's WSGI Request.headers keys are literal uppercase strings
+        # (e.g. "CONTENT-TYPE"), unlike its ASGI Request which lowercases
+        # them; look the header up case-insensitively so both work.
+        for key, value in request.headers.items():
+            if key.lower() == "content-type":
+                return value
+        return ""
+
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
             return request.params
@@ -95,6 +104,13 @@ class Apiman(_Apiman):
             return self._get_request_media(request)
         else:
             return {}
+
+    def has_request_body(self, request: Request, location: str) -> bool:
+        _ = location
+        content_length = request.content_length
+        if content_length is not None:
+            return content_length > 0
+        return getattr(request, "_media", None) is not None
 
     async def async_get_request_data(self, request: Request, k: str) -> typing.Any:
         if k in ("json", "form", "xml"):
@@ -135,7 +151,7 @@ class Apiman(_Apiman):
                             self.add_path(n.uri_template, specification, method=method)
             self._load_node_specification(n.children)
 
-    def load_specification(self, _) -> dict:
+    def load_specification(self, _: typing.Optional[App] = None) -> dict:
         if not self.loaded:
             self._load_node_specification(self._iter_router_roots())
             return self._load_specification()

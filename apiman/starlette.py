@@ -35,6 +35,7 @@ class Apiman(_Apiman):
     """
 
     def init_app(self, app: Starlette):
+        self._app = app
         app.on_event("startup")(lambda: self.load_specification(app))
 
         if self.swagger_template and self.swagger_url:
@@ -66,14 +67,29 @@ class Apiman(_Apiman):
                 break
         return self._get_path_schema(path, request.method.lower())
 
-    def _cached_request_value(
-        self, request: Request, name: str, default: typing.Any
-    ) -> typing.Any:
-        return getattr(request, name, default)
+    _UNREAD = object()
+
+    def _cached_request_value(self, request: Request, name: str) -> typing.Any:
+        # Starlette only populates these private cache attributes after the
+        # matching async accessor (request.json()/.form()/.body()) has been
+        # awaited at least once. Reading them before that silently returns a
+        # falsy default and drops the request body from validation, so fail
+        # loudly instead when the body was never actually read.
+        value = getattr(request, name, self._UNREAD)
+        if value is self._UNREAD or (name == "_form" and value is None):
+            raise RuntimeError(
+                f"Starlette request body ({name!r}) was not read before "
+                "validation. Use `await apiman.async_validate_request(request)` "
+                "instead of the sync `validate_request` for routes with a "
+                "JSON/form/XML body."
+            )
+        return value
 
     def get_request_data(self, request: Request, k: str) -> typing.Any:
         if k == "query":
             data: dict[str, typing.Any] = {}
+            # e.g. [("tag", "red"), ("tag", "blue")]
+            #   -> {"tag": ["red", "blue"]}
             for key, value in request.query_params.multi_items():
                 if key in data:
                     current = data[key]
@@ -91,11 +107,23 @@ class Apiman(_Apiman):
         elif k == "header":
             return {key.lower(): value for key, value in request.headers.items()}
         elif k == "json":
-            return self._cached_request_value(request, "_json", None)
+            return self._cached_request_value(request, "_json")
         elif k == "form":
-            return dict(self._cached_request_value(request, "_form", {}) or {})
+            form = self._cached_request_value(request, "_form")
+            form_data: dict[str, typing.Any] = {}
+            # FormData is a MultiDict; dict(form) would silently keep only the
+            # last value. e.g. [("tag", "red"), ("tag", "blue")]
+            #   -> {"tag": ["red", "blue"]}
+            for key, value in form.multi_items():
+                if key not in form_data:
+                    form_data[key] = value
+                elif isinstance(form_data[key], list):
+                    form_data[key].append(value)
+                else:
+                    form_data[key] = [form_data[key], value]
+            return form_data
         elif k == "xml":
-            return self.xmltodict(self._cached_request_value(request, "_body", ""))
+            return self.xmltodict(self._cached_request_value(request, "_body"))
         else:
             return {}
 
@@ -109,9 +137,28 @@ class Apiman(_Apiman):
 
         return self.get_request_data(request, k)
 
+    def has_request_body(self, request: Request, location: str) -> bool:
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                return int(content_length) > 0
+            except ValueError:
+                pass
+        body = getattr(request, "_body", None)
+        if body is not None:
+            return bool(body)
+        if location == "form":
+            form = getattr(request, "_form", None)
+            return bool(form)
+        return False
+
     def load_specification(
-        self, app: Starlette, mount: typing.Optional[Mount] = None, base_path=""
+        self,
+        app: typing.Optional[Starlette] = None,
+        mount: typing.Optional[Mount] = None,
+        base_path="",
     ) -> dict:
+        app = app or self._app
         if not self.loaded:
             for route in mount.routes if mount else app.routes:
                 if isinstance(route, Mount) and route.routes:

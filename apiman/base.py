@@ -194,10 +194,26 @@ class Apiman:
     ) -> list[dict[str, typing.Any]]:
         path_item = self.specification["paths"][path]
         operation = path_item[method]
-        parameters = []
-        parameters.extend(path_item.get("parameters", []))
-        parameters.extend(operation.get("parameters", []))
-        return parameters
+        # Operation-level parameters override path-level parameters with the
+        # same name+location per the OpenAPI spec, so later entries must win.
+        parameters: dict[tuple, dict[str, typing.Any]] = {}
+        for d in path_item.get("parameters", []):
+            d = self.expand_specification(d)
+            parameters[self._parameter_identity(d)] = d
+        for d in operation.get("parameters", []):
+            d = self.expand_specification(d)
+            parameters[self._parameter_identity(d)] = d
+        return list(parameters.values())
+
+    def _parameter_identity(
+        self, parameter: dict[str, typing.Any]
+    ) -> tuple[typing.Any, typing.Any]:
+        location = parameter.get("in")
+        name = parameter.get("name")
+        if location == "header" and isinstance(name, str):
+            # e.g. ("X-Token", "header") -> ("x-token", "header")
+            name = name.lower()
+        return name, location
 
     def _parameter_schema(
         self, parameter: dict[str, typing.Any]
@@ -257,19 +273,41 @@ class Apiman:
         actual_type = self._normalize_media_type(actual)
         if actual_type == expected_type:
             return True
-        return (
-            location == "json"
-            and expected_type == "application/json"
-            and actual_type.endswith("+json")
-        )
+        if location == "json":
+            return expected_type == "application/json" and actual_type.endswith("+json")
+        if location == "xml":
+            return expected_type in (
+                "application/xml",
+                "text/xml",
+            ) and actual_type.endswith("+xml")
+        return False
 
     def _request_body_schema(
         self, schema: dict[str, typing.Any], required: bool
     ) -> dict[str, typing.Any]:
-        schema = copy.deepcopy(schema)
-        if not required:
-            return schema
-        return {"allOf": [schema], "not": {"type": "null"}}
+        # ``requestBody.required`` describes transport presence, not the JSON
+        # value. In particular, a present JSON ``null`` body is valid when the
+        # declared OpenAPI 3.1 schema allows null. Presence is checked by
+        # ``has_request_body`` during validation instead of rewriting the
+        # caller's schema.
+        _ = required
+        return copy.deepcopy(schema)
+
+    def _assign_body_schema(
+        self,
+        schema: dict[str, typing.Any],
+        location: str,
+        media_type: str,
+        body_schema: dict[str, typing.Any],
+    ) -> None:
+        # Keep each declared media type paired with its own schema. Collapsing
+        # application/json and application/problem+json into a location-level
+        # anyOf would let a request validate against the wrong media schema.
+        # e.g. {"json": [("application/json", schema_a),
+        #                 ("application/problem+json", schema_b)]}
+        schema[self.BODY_MEDIA_TYPES_KEY].setdefault(location, []).append(
+            (media_type, body_schema)
+        )
 
     def _openapi2_consumes(self, path: str, method: str) -> list[str]:
         operation = self.specification["paths"][path][method]
@@ -287,7 +325,7 @@ class Apiman:
         if cache_key in self._path_schemas:
             return self._path_schemas[cache_key]
 
-        schema: dict[str, dict[str, typing.Any]] = {
+        schema: dict[str, typing.Any] = {
             "query": {},
             "header": {},
             "path": {},
@@ -295,7 +333,7 @@ class Apiman:
             "json": {},
             "xml": {},
             "form": {},
-            self.BODY_REQUIRED_KEY: {},
+            self.BODY_REQUIRED_KEY: False,
             self.BODY_MEDIA_TYPES_KEY: {},
         }
         if (
@@ -316,7 +354,6 @@ class Apiman:
         cookie_schema = copy.deepcopy(base_schema)
         form_schema = copy.deepcopy(base_schema)
         for d in self._get_operation_parameters(path, method):
-            d = self.expand_specification(d)
             if d.get("in") == "query":
                 _schema = query_schema
             elif d.get("in") == "header":
@@ -328,17 +365,16 @@ class Apiman:
             elif d.get("in") == "formData":
                 _schema = form_schema
             elif self.version[0] <= 2 and d.get("in") == "body" and "schema" in d:
-                body_schema = self._request_body_schema(
-                    d["schema"], d.get("required", False)
+                body_required = d.get("required", False)
+                body_schema = self._request_body_schema(d["schema"], body_required)
+                schema[self.BODY_REQUIRED_KEY] = (
+                    schema[self.BODY_REQUIRED_KEY] or body_required
                 )
                 for media_type in self._openapi2_consumes(path, method):
                     location = self._media_type_location(media_type)
                     if not location:
                         continue
-                    schema[location] = body_schema
-                    schema[self.BODY_MEDIA_TYPES_KEY].setdefault(location, []).append(
-                        media_type
-                    )
+                    self._assign_body_schema(schema, location, media_type, body_schema)
                 continue
             else:
                 continue
@@ -359,16 +395,16 @@ class Apiman:
             )
             request_body = self.expand_specification(request_body)
             required = request_body.get("required", False)
+            if request_body.get("content"):
+                schema[self.BODY_REQUIRED_KEY] = required
             for media_type, media_schema in request_body.get("content", {}).items():
                 location = self._media_type_location(media_type)
-                if not location or "schema" not in media_schema:
+                if not location:
                     continue
-                schema[location] = self._request_body_schema(
-                    media_schema["schema"], required
+                body_schema = self._request_body_schema(
+                    media_schema.get("schema", {}), required
                 )
-                schema[self.BODY_MEDIA_TYPES_KEY].setdefault(location, []).append(
-                    media_type
-                )
+                self._assign_body_schema(schema, location, media_type, body_schema)
         self._path_schemas[cache_key] = schema
         return schema
 
@@ -385,6 +421,21 @@ class Apiman:
         return request.headers.get("Content-Type", "") or request.headers.get(
             "content-type", ""
         )
+
+    def has_request_body(self, request: typing.Any, location: str) -> bool:
+        """Return whether the transport contains a body for ``location``.
+
+        The small generic request object used by embedders and tests can expose
+        a ``data`` mapping. Framework adapters override this method where body
+        presence is represented by raw bytes or a content-length field.
+        """
+        data = getattr(request, "data", None)
+        if isinstance(data, dict):
+            return location in data
+        body = getattr(request, "body", None)
+        if body is not None and not callable(body):
+            return bool(body)
+        return False
 
     def _normalize_request_data(
         self, location: str, data: typing.Any, schema: dict[str, typing.Any]
@@ -403,8 +454,10 @@ class Apiman:
             value = normalized[name]
             if property_schema.get("type") == "array":
                 if not isinstance(value, list):
+                    # e.g. {"tags": "red"} -> {"tags": ["red"]}
                     normalized[name] = [value]
             elif isinstance(value, list) and len(value) == 1:
+                # e.g. {"name": ["alice"]} -> {"name": "alice"}
                 normalized[name] = value[0]
         return normalized
 
@@ -416,22 +469,38 @@ class Apiman:
         body_media_types = schema.get(self.BODY_MEDIA_TYPES_KEY, {})
         body_schema_count = body_miss_count = 0
         for k, s in schema.items():
-            if k.startswith("__") or not s or k in _ignore:
+            if k.startswith("__") or k in _ignore:
                 continue
-            if self._is_body_location(k):
+            declared_bodies = body_media_types.get(k, [])
+            if self._is_body_location(k) and declared_bodies:
                 body_schema_count += 1
-                expected_media_types = body_media_types.get(
-                    k, self.VALIDATE_REQUEST_CONTENT_TYPES[k]
-                )
                 content_type = self.get_request_content_type(request)
-                if not any(
-                    self._media_type_matches(k, expected, content_type)
-                    for expected in expected_media_types
-                ):
+                matches = [
+                    (media_type, body_schema)
+                    for media_type, body_schema in declared_bodies
+                    if self._media_type_matches(k, media_type, content_type)
+                ]
+                if not matches:
                     body_miss_count += 1
                     continue
-            yield k, s
-        if body_schema_count and body_schema_count == body_miss_count:
+                actual_type = self._normalize_media_type(content_type)
+                # Prefer an explicit declaration over a structured-suffix
+                # fallback. e.g. application/problem+json selects its own
+                # schema instead of the generic application/json schema.
+                exact_matches = [
+                    body_schema
+                    for media_type, body_schema in matches
+                    if self._normalize_media_type(media_type) == actual_type
+                ]
+                yield k, exact_matches[0] if exact_matches else matches[0][1]
+                continue
+            if s:
+                yield k, s
+        if (
+            body_schema_count
+            and body_schema_count == body_miss_count
+            and schema.get(self.BODY_REQUIRED_KEY, False)
+        ):
             raise jsonschema_rs.ValidationError(
                 "Miss body content", "Miss body content", [], []
             )
@@ -441,6 +510,12 @@ class Apiman:
     ):
         for k, s in self.iter_request_schema(request, ignore=ignore):
             data = self.get_request_data(request, k)
+            if self._is_body_location(k) and not self.has_request_body(request, k):
+                if self.get_request_schema(request).get(self.BODY_REQUIRED_KEY, False):
+                    raise jsonschema_rs.ValidationError(
+                        "Miss body content", "Miss body content", [], []
+                    )
+                continue
             data = self._normalize_request_data(k, data, s)
             jsonschema_rs.JSONSchema(s).validate(data)
 
@@ -449,6 +524,12 @@ class Apiman:
     ):
         for k, s in self.iter_request_schema(request, ignore=ignore):
             data = await self.async_get_request_data(request, k)
+            if self._is_body_location(k) and not self.has_request_body(request, k):
+                if self.get_request_schema(request).get(self.BODY_REQUIRED_KEY, False):
+                    raise jsonschema_rs.ValidationError(
+                        "Miss body content", "Miss body content", [], []
+                    )
+                continue
             data = self._normalize_request_data(k, data, s)
             jsonschema_rs.JSONSchema(s).validate(data)
 

@@ -52,7 +52,7 @@ class WSGIThingsResource:
           "200":
             description: OK
         """
-        apiman.validate_request(req)
+        wsgi_apiman.validate_request(req)
         resp.status = falcon.HTTP_200
         resp.content_type = falcon.MEDIA_TEXT
         resp.text = "hi\n"
@@ -212,9 +212,7 @@ class WSGIValidationResource:
     """
 
     def on_post(self, req: Request, resp: Response, path):
-        for k in list(req.headers.keys()):
-            req.headers[k.lower()] = req.headers[k]
-        apiman.validate_request(req, ignore=["header"])
+        wsgi_apiman.validate_request(req)
         resp.status = falcon.HTTP_200
 
 
@@ -227,7 +225,7 @@ wsgi_app.add_route("/validate/{path}", WSGIValidationResource())
 def test_app():
     apiman.validate_specification()
     wsgi_apiman.validate_specification()
-    asgi_client = testing.TestClient(app)
+    _asgi_client = testing.TestClient(app)
     wsgi_client = testing.TestClient(wsgi_app)
 
     # TODO: seams like asgi client need asyncio runtime(client conductor)
@@ -263,21 +261,7 @@ def test_app():
         # no default xml handler
         # assert client.simulate_post('/validate/test?query=test', body="""<?xml version="1.0" encoding="UTF-8"?> <data> <id>0</id> <name>string</name> </data>""", headers={"content-type": "application/xml", "header": "test", "cookie": "cookie=test"}).status_code == 200
 
-        if client is asgi_client:
-            with pytest.raises(Exception):
-                assert (
-                    client.simulate_post(
-                        "/validate/test?query=test",
-                        body='{"id": 1, "name": "test"}',
-                        headers={
-                            "content-type": "application/json",
-                            "heade": "test",
-                            "cookie": "cookie=test",
-                        },
-                    ).status_code
-                    == 200
-                )
-        else:
+        with pytest.raises(Exception):
             assert (
                 client.simulate_post(
                     "/validate/test?query=test",

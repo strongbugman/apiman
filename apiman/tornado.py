@@ -38,6 +38,7 @@ class Apiman(_Apiman):
     """
 
     def init_app(self, app: Application):
+        self._app = app
         if self.swagger_template and self.swagger_url:
             swagger_html = Template(open(self.swagger_template).read()).render(
                 self.config
@@ -109,7 +110,12 @@ class Apiman(_Apiman):
         else:
             return {}
 
-    def load_specification(self, app: Application) -> dict:
+    def has_request_body(self, request: RequestHandler, location: str) -> bool:
+        _ = location
+        return bool(request.request.body)
+
+    def load_specification(self, app: typing.Optional[Application] = None) -> dict:
+        app = app or self._app
         if not self.loaded:
             for rule in self._iter_rules(self._application_rules(app)):
                 path = self._rule_path(rule)
